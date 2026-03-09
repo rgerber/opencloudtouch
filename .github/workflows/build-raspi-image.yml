@@ -166,16 +166,10 @@ jobs:
 
           # Fix: bc locale issue in export-image/prerun.sh
           # The expression "0.2" causes syntax error in non-C locales
+          # Replace bc floating-point with integer arithmetic (ROOT_SIZE/5 == 20%)
           PRERUN="pi-gen/export-image/prerun.sh"
           if [ -f "$PRERUN" ]; then
-            # Replace the bc floating-point calculation with integer-only arithmetic
-            # Original: ROOT_MARGIN="$(echo "($ROOT_SIZE * 0.2 + 200 * 1024 * 1024) / 1" | bc)"
-            # New: ROOT_MARGIN=$(( ROOT_SIZE / 5 + 200 * 1024 * 1024 ))
-            sed -i 's|ROOT_MARGIN="$(echo "(\$ROOT_SIZE \* 0.2 + 200 \* 1024 \* 1024) / 1" | bc)"|ROOT_MARGIN=$(( ROOT_SIZE / 5 + 200 * 1024 * 1024 ))|' "$PRERUN"
-            # If sed pattern didn't match (quoting variations), try alternative approach
-            if grep -q 'bc)' "$PRERUN"; then
-              sed -i '/ROOT_MARGIN/s|.*|ROOT_MARGIN=$(( ROOT_SIZE / 5 + 200 * 1024 * 1024 ))|' "$PRERUN"
-            fi
+            sed -i '/bc)/c\ROOT_MARGIN=$(( ROOT_SIZE / 5 + 200 * 1024 * 1024 ))' "$PRERUN"
             echo "=== Patched export-image/prerun.sh (ROOT_MARGIN line) ==="
             grep -n "ROOT_MARGIN" "$PRERUN"
           fi
