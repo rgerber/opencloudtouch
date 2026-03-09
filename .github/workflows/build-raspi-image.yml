@@ -129,50 +129,45 @@ jobs:
 
       - name: Patch pi-gen package lists for compatibility
         run: |
-          # Some packages in pi-gen's stage2 may not be available in the
-          # bookworm RPi repo yet. Remove them to prevent apt-get failures.
-          # Our custom stage-opencloudtouch provides everything we need.
-          PACKAGES_FILE="pi-gen/stage2/01-sys-tweaks/00-packages"
-          echo "=== Original stage2 packages ==="
-          cat "$PACKAGES_FILE"
+          # Many RPi-specific packages in pi-gen's stage2 are not available in
+          # the standard bookworm repo. Remove all problematic ones and skip
+          # substages we don't need. Our custom stage-opencloudtouch provides
+          # everything required for OpenCloudTouch.
 
-          # Remove packages not yet in bookworm RPi repo
-          sed -i '/^rpi-swap/d' "$PACKAGES_FILE"
-          sed -i '/^rpi-usb-gadget/d' "$PACKAGES_FILE"
-          sed -i '/^rpi-keyboard-config$/d' "$PACKAGES_FILE"
-          sed -i '/^rpi-keyboard-fw-update$/d' "$PACKAGES_FILE"
-          sed -i '/^rpi-connect-lite$/d' "$PACKAGES_FILE"
+          # --- 01-sys-tweaks/00-packages: Remove unavailable RPi packages ---
+          PKGFILE="pi-gen/stage2/01-sys-tweaks/00-packages"
+          echo "=== Original 01-sys-tweaks/00-packages ==="
+          cat "$PKGFILE"
+          # Remove all rpi-* packages (rpi-swap, rpi-loop-utils, rpi-usb-gadget,
+          # rpi-keyboard-config, rpi-keyboard-fw-update, rpi-connect-lite, rpi-eeprom, rpi-update)
+          sed -i '/rpi-/d' "$PKGFILE"
+          # Remove other packages not in standard bookworm
+          sed -i '/^raspberrypi-sys-mods$/d' "$PKGFILE"
+          sed -i '/^raspi-utils$/d' "$PKGFILE"
+          sed -i '/^kms++-utils$/d' "$PKGFILE"
+          sed -i '/^libpam-chksshpwd$/d' "$PKGFILE"
+          echo "=== Patched 01-sys-tweaks/00-packages ==="
+          cat "$PKGFILE"
 
-          echo "=== Patched stage2/01-sys-tweaks packages ==="
-          cat "$PACKAGES_FILE"
+          # --- 02-net-tweaks/00-packages: Remove RPi-specific network packages ---
+          NETPKGFILE="pi-gen/stage2/02-net-tweaks/00-packages"
+          echo "=== Original 02-net-tweaks/00-packages ==="
+          cat "$NETPKGFILE"
+          sed -i '/raspberrypi-net-mods/d' "$NETPKGFILE"
+          # firmware-* packages may not be available, make line non-fatal
+          sed -i '/^firmware-marvell/d' "$NETPKGFILE"
+          echo "=== Patched 02-net-tweaks/00-packages ==="
+          cat "$NETPKGFILE"
 
-          # Also patch stage2/04-cloud-init packages
-          CLOUD_INIT_PACKAGES="pi-gen/stage2/04-cloud-init/00-packages"
-          if [ -f "$CLOUD_INIT_PACKAGES" ]; then
-            echo "=== Original stage2/04-cloud-init packages ==="
-            cat "$CLOUD_INIT_PACKAGES"
-            sed -i '/^rpi-cloud-init-mods$/d' "$CLOUD_INIT_PACKAGES"
-            echo "=== Patched stage2/04-cloud-init packages ==="
-            cat "$CLOUD_INIT_PACKAGES"
-          fi
+          # --- Skip cloud-init substage entirely (not needed for OCT) ---
+          touch pi-gen/stage2/04-cloud-init/SKIP
 
-          # Patch 01-run.sh: rpi-resize service comes from rpi-swap (removed above)
-          # Make systemctl enable rpi-resize non-fatal
+          # --- Patch 01-run.sh: make systemctl calls non-fatal ---
           RUN_SCRIPT="pi-gen/stage2/01-sys-tweaks/01-run.sh"
           sed -i 's/systemctl enable rpi-resize/systemctl enable rpi-resize 2>\/dev\/null || true/' "$RUN_SCRIPT"
 
           echo "=== Patched 01-run.sh (rpi-resize line) ==="
           grep -n "rpi-resize" "$RUN_SCRIPT" || echo "(no rpi-resize reference remaining)"
-
-          # Fix: bc locale issue in export-image/prerun.sh
-          # The expression "0.2" causes syntax error in non-C locales
-          # Replace bc floating-point with integer arithmetic (ROOT_SIZE/5 == 20%)
-          PRERUN="pi-gen/export-image/prerun.sh"
-          if [ -f "$PRERUN" ]; then
-            sed -i '/bc)/c\ROOT_MARGIN=$(( ROOT_SIZE / 5 + 200 * 1024 * 1024 ))' "$PRERUN"
-            echo "=== Patched export-image/prerun.sh (ROOT_MARGIN line) ==="
-            grep -n "ROOT_MARGIN" "$PRERUN"
-          fi
 
       - name: Fix Debian GPG keyring for bookworm
         run: |
