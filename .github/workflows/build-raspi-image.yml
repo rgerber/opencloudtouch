@@ -132,9 +132,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static binfmt-support
           sudo update-binfmts --enable
-          # Verify QEMU is available
-          ls /usr/bin/qemu-* || echo "QEMU binaries:"
-          update-binfmts --display | grep -i "aarch64\|arm" || true
+          # pi-gen's build-docker.sh checks for 'qemu-aarch64' (no -static suffix)
+          # but qemu-user-static installs as 'qemu-aarch64-static'
+          sudo ln -sf /usr/bin/qemu-aarch64-static /usr/bin/qemu-aarch64
+          sudo ln -sf /usr/bin/qemu-arm-static /usr/bin/qemu-arm
+          # Verify
+          which qemu-aarch64 && echo "qemu-aarch64 OK"
+          which qemu-arm && echo "qemu-arm OK"
 
       - name: Build image with pi-gen
         run: |
