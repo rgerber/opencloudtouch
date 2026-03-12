@@ -43,6 +43,10 @@ export default defineConfig({
       return config;
     },
 
+    retries: {
+      runMode: 2,   // Retry flaky tests up to 2× in headless/CI (pre-push)
+      openMode: 0,  // No retries in interactive mode
+    },
     viewportWidth: 1280,
     viewportHeight: 720,
     defaultCommandTimeout: 5000,  // Reduced from 10s (Phase 1 optimization)
