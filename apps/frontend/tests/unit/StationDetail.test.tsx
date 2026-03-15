@@ -47,7 +47,7 @@ describe("StationDetail Component", () => {
     render(
       <StationDetail stationUuid="abc-123" onBack={mockOnBack} onSelect={mockOnSelect} />
     );
-    expect(screen.getByText("Lade Detailsâ€¦")).toBeInTheDocument();
+    expect(screen.getByText("Lade Details…")).toBeInTheDocument();
   });
 
   it("displays station details after loading", async () => {
@@ -105,7 +105,7 @@ describe("StationDetail Component", () => {
       expect(screen.getByText("SWR3")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("â† ZurÃ¼ck"));
+    fireEvent.click(screen.getByText("← Zurück"));
     expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
 
@@ -131,7 +131,7 @@ describe("StationDetail Component", () => {
       expect(screen.getByText("Station konnte nicht geladen werden.")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("â† ZurÃ¼ck"));
+    fireEvent.click(screen.getByText("← Zurück"));
     expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
 

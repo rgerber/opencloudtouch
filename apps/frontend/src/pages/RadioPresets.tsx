@@ -27,15 +27,16 @@ export default function RadioPresets({ devices = [] }: RadioPresetsProps) {
 
   const currentDevice = devices[currentDeviceIndex];
 
-  const { presets, loading, syncing, error, clearError, syncPresets, assignStation, removePreset } =
-    usePresets(currentDevice?.device_id);
+  const { presets, loading, syncing, error, clearError, syncPresets, assignStation } = usePresets(
+    currentDevice?.device_id
+  );
   const { volume, muted, setDeviceVolume, toggleMute } = useVolume(currentDevice?.device_id);
   const { nowPlaying: npState } = useNowPlaying(currentDevice?.device_id);
   const { show: showToast } = useToast();
   const [playError, setPlayError] = useState<string | null>(null);
   const [playLoading, setPlayLoading] = useState(false);
   const [powerLoading, setPowerLoading] = useState(false);
-  const [confirmClear, setConfirmClear] = useState<number | null>(null);
+  const [pendingStation, setPendingStation] = useState<RadioStation | null>(null);
 
   const isStandby = npState?.source === "STANDBY";
 
@@ -81,9 +82,29 @@ export default function RadioPresets({ devices = [] }: RadioPresetsProps) {
   const handleStationSelect = async (station: RadioStation) => {
     if (!assigningPreset || !currentDevice?.device_id) return;
 
-    await assignStation(assigningPreset, station, currentDevice.device_id);
+    // If preset slot already has a station, ask for overwrite confirmation
+    if (presets[assigningPreset]) {
+      setPendingStation(station);
+      return;
+    }
+
+    await doAssign(assigningPreset, station);
+  };
+
+  const doAssign = async (presetNumber: number, station: RadioStation) => {
+    if (!currentDevice?.device_id) return;
+
+    await assignStation(presetNumber, station, currentDevice.device_id);
     setAssigningPreset(null);
     setSearchOpen(false);
+    setPendingStation(null);
+    showToast(`Preset ${presetNumber} gespeichert.`, "success");
+  };
+
+  const handleConfirmOverwrite = async () => {
+    if (pendingStation && assigningPreset) {
+      await doAssign(assigningPreset, pendingStation);
+    }
   };
 
   const handlePlayPreset = async (presetNumber: number) => {
@@ -94,27 +115,12 @@ export default function RadioPresets({ devices = [] }: RadioPresetsProps) {
 
     try {
       await playPresetAPI(currentDevice.device_id, presetNumber);
-
-      // Success feedback could be added here (e.g., toast notification)
-      console.log(`Playing preset ${presetNumber} on ${currentDevice.name}`);
     } catch (err) {
       console.error("Failed to play preset:", err);
       setPlayError("Preset konnte nicht abgespielt werden. Bitte versuchen Sie es erneut.");
     } finally {
       setPlayLoading(false);
     }
-  };
-
-  const handleClearPreset = async (presetNumber: number) => {
-    if (!currentDevice?.device_id) return;
-    setConfirmClear(presetNumber);
-  };
-
-  const handleConfirmClear = async () => {
-    if (confirmClear === null || !currentDevice?.device_id) return;
-    const presetNumber = confirmClear;
-    setConfirmClear(null);
-    await removePreset(presetNumber, currentDevice.device_id);
   };
 
   if (devices.length === 0) {
@@ -256,8 +262,11 @@ export default function RadioPresets({ devices = [] }: RadioPresetsProps) {
                   number={num}
                   preset={presets[num]}
                   onAssign={() => handleAssignClick(num)}
-                  onClear={() => handleClearPreset(num)}
                   onPlay={() => handlePlayPreset(num)}
+                  isCurrentlyPlaying={
+                    npState?.state === "PLAY_STATE" &&
+                    npState?.station_name === presets[num]?.station_name
+                  }
                 />
               ))}
         </div>
@@ -269,19 +278,20 @@ export default function RadioPresets({ devices = [] }: RadioPresetsProps) {
         onClose={() => {
           setSearchOpen(false);
           setAssigningPreset(null);
+          setPendingStation(null);
         }}
         onStationSelect={handleStationSelect}
       />
 
-      {/* Confirm Delete Dialog — REFACT-107 */}
+      {/* Confirm Overwrite Dialog */}
       <ConfirmDialog
-        open={confirmClear !== null}
-        title="Preset löschen"
-        message={`Möchten Sie Preset ${confirmClear} wirklich löschen?`}
-        confirmLabel="Löschen"
+        open={pendingStation !== null}
+        title="Preset überschreiben"
+        message={`Möchten Sie Preset ${assigningPreset} wirklich überschreiben?`}
+        confirmLabel="Überschreiben"
         cancelLabel="Abbrechen"
-        onConfirm={handleConfirmClear}
-        onCancel={() => setConfirmClear(null)}
+        onConfirm={handleConfirmOverwrite}
+        onCancel={() => setPendingStation(null)}
       />
     </div>
   );

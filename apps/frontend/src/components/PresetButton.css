@@ -4,7 +4,7 @@
   gap: var(--space-sm);
 }
 
-.preset-play,
+.preset-info,
 .preset-empty {
   flex: 1;
   display: flex;
@@ -19,10 +19,39 @@
   min-height: 60px;
 }
 
-.preset-play:hover,
+.preset-info:hover,
 .preset-empty:hover {
   background-color: var(--color-bg-darker);
   border-color: var(--color-accent);
+}
+
+/* Station Logo / Avatar */
+.preset-station-logo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.preset-favicon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.preset-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.5px;
+  border-radius: var(--border-radius-sm);
 }
 
 .preset-number {
@@ -43,6 +72,9 @@
   flex: 1;
   color: var(--color-text-primary);
   font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .preset-placeholder {
@@ -51,21 +83,34 @@
   font-style: italic;
 }
 
-.preset-clear {
+/* Play action button (replaces old delete button) */
+.preset-play-btn {
   min-width: 44px;
   height: 60px;
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-md);
-  color: var(--color-text-secondary);
+  color: #2e7d32;
   font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.preset-clear:hover {
-  background-color: #cc0000;
-  border-color: #cc0000;
+.preset-play-btn:hover:not(:disabled) {
+  background-color: #2e7d32;
+  border-color: #2e7d32;
   color: white;
+}
+
+.preset-play-btn.playing {
+  color: #2e7d32;
+  cursor: default;
+  opacity: 0.7;
+}
+
+.preset-play-btn:disabled {
+  cursor: default;
 }

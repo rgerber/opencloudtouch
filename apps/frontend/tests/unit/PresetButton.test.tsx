@@ -1,10 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+﻿import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import PresetButton, { type Preset } from "../../src/components/PresetButton";
 
 describe("PresetButton Component", () => {
   const mockOnAssign = vi.fn();
-  const mockOnClear = vi.fn();
   const mockOnPlay = vi.fn();
 
   const mockPreset: Preset = {
@@ -13,7 +12,6 @@ describe("PresetButton Component", () => {
 
   beforeEach(() => {
     mockOnAssign.mockClear();
-    mockOnClear.mockClear();
     mockOnPlay.mockClear();
   });
 
@@ -24,7 +22,6 @@ describe("PresetButton Component", () => {
           number={1}
           preset={null}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -38,7 +35,6 @@ describe("PresetButton Component", () => {
         <PresetButton
           number={2}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -53,7 +49,6 @@ describe("PresetButton Component", () => {
           number={1}
           preset={null}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -63,7 +58,6 @@ describe("PresetButton Component", () => {
 
       expect(mockOnAssign).toHaveBeenCalledTimes(1);
       expect(mockOnPlay).not.toHaveBeenCalled();
-      expect(mockOnClear).not.toHaveBeenCalled();
     });
 
   });
@@ -75,7 +69,6 @@ describe("PresetButton Component", () => {
           number={3}
           preset={mockPreset}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -84,42 +77,67 @@ describe("PresetButton Component", () => {
       expect(screen.getByText("BBC Radio 1")).toBeInTheDocument();
     });
 
-    it("calls onPlay when preset play button is clicked", () => {
+    it("calls onAssign when preset info area is clicked", () => {
       render(
         <PresetButton
           number={1}
           preset={mockPreset}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
 
-      const playButton = screen.getByText("BBC Radio 1").closest("button");
-      fireEvent.click(playButton!);
+      const infoButton = screen.getByText("BBC Radio 1").closest("button");
+      fireEvent.click(infoButton!);
+
+      expect(mockOnAssign).toHaveBeenCalledTimes(1);
+      expect(mockOnPlay).not.toHaveBeenCalled();
+    });
+
+    it("calls onPlay when play button is clicked", () => {
+      render(
+        <PresetButton
+          number={1}
+          preset={mockPreset}
+          onAssign={mockOnAssign}
+          onPlay={mockOnPlay}
+        />
+      );
+
+      const playButton = screen.getByLabelText("Preset abspielen");
+      fireEvent.click(playButton);
 
       expect(mockOnPlay).toHaveBeenCalledTimes(1);
       expect(mockOnAssign).not.toHaveBeenCalled();
-      expect(mockOnClear).not.toHaveBeenCalled();
     });
 
-    it("calls onClear when clear button is clicked", () => {
+    it("shows station avatar when no favicon", () => {
       render(
         <PresetButton
           number={1}
           preset={mockPreset}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
 
-      const clearButton = screen.getByLabelText("Clear preset");
-      fireEvent.click(clearButton);
+      // BBC Radio 1 → initials "BR"
+      expect(screen.getByText("BR")).toBeInTheDocument();
+    });
 
-      expect(mockOnClear).toHaveBeenCalledTimes(1);
-      expect(mockOnAssign).not.toHaveBeenCalled();
-      expect(mockOnPlay).not.toHaveBeenCalled();
+    it("disables play button when currently playing", () => {
+      render(
+        <PresetButton
+          number={1}
+          preset={mockPreset}
+          onAssign={mockOnAssign}
+          onPlay={mockOnPlay}
+          isCurrentlyPlaying={true}
+        />
+      );
+
+      const playButton = screen.getByLabelText("Wird abgespielt");
+      expect(playButton).toBeDisabled();
     });
 
   });
@@ -131,7 +149,6 @@ describe("PresetButton Component", () => {
           number={1}
           preset={null}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -142,7 +159,6 @@ describe("PresetButton Component", () => {
           number={6}
           preset={mockPreset}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -181,7 +197,6 @@ describe("PresetButton Component", () => {
           number={1}
           preset={preset}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -203,7 +218,6 @@ describe("PresetButton Component", () => {
           number={1}
           preset={preset}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -225,7 +239,6 @@ describe("PresetButton Component", () => {
           number={1}
           preset={preset}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -248,7 +261,6 @@ describe("PresetButton Component", () => {
           number={1}
           preset={preset}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );
@@ -270,7 +282,6 @@ describe("PresetButton Component", () => {
           number={1}
           preset={preset}
           onAssign={mockOnAssign}
-          onClear={mockOnClear}
           onPlay={mockOnPlay}
         />
       );

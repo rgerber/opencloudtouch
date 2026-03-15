@@ -26,6 +26,7 @@ function buildPresetsMap(devicePresets: PresetResponse[]): Record<number, Preset
     map[p.preset_number] = {
       station_name: p.station_name,
       station_url: p.station_url,
+      station_favicon: p.station_favicon,
       source: p.source,
     };
   });
@@ -160,7 +161,10 @@ export function usePresets(deviceId: string | undefined): UsePresetsResult {
 
       setPresets((prev) => ({
         ...prev,
-        [presetNumber]: { station_name: station.name },
+        [presetNumber]: {
+          station_name: station.name,
+          station_favicon: station.favicon,
+        },
       }));
     } catch (err) {
       console.error("[usePresets] Failed to save preset:", err);

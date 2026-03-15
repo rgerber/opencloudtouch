@@ -66,8 +66,20 @@
   transition: opacity 0.2s ease;
 }
 
+/* Desktop: show on hover */
 .np-art:hover .np-play-overlay {
   opacity: 1;
+}
+
+/* Mobile: always visible with subtle background */
+@media (hover: none), (max-width: 768px) {
+  .np-play-overlay {
+    opacity: 1;
+  }
+
+  .np-play-overlay svg {
+    background: rgba(0, 0, 0, 0.4);
+  }
 }
 
 .np-play-overlay svg {

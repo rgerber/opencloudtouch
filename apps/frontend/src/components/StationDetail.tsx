@@ -71,7 +71,7 @@ export default function StationDetail({ stationUuid, onBack, onSelect }: Station
   if (loading) {
     return (
       <div className="station-detail">
-        <div className="sd-loading">Lade Detailsâ€¦</div>
+        <div className="sd-loading">Lade Details…</div>
       </div>
     );
   }
@@ -81,7 +81,7 @@ export default function StationDetail({ stationUuid, onBack, onSelect }: Station
       <div className="station-detail">
         <div className="sd-error">{error || "Station nicht gefunden."}</div>
         <button className="sd-back" onClick={onBack}>
-          â† ZurÃ¼ck
+          ← Zurück
         </button>
       </div>
     );
@@ -146,7 +146,7 @@ export default function StationDetail({ stationUuid, onBack, onSelect }: Station
 
       <div className="sd-actions">
         <button className="sd-back" onClick={onBack}>
-          â† ZurÃ¼ck
+          ← Zurück
         </button>
         <button className="sd-select" onClick={() => onSelect(station)}>
           Als Preset speichern
