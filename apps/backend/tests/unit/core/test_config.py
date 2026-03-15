@@ -192,3 +192,65 @@ def test_effective_db_path_production(monkeypatch):
     monkeypatch.delenv("OCT_DB_PATH", raising=False)
     config = AppConfig(mock_mode=False, _env_file=None)
     assert config.effective_db_path == "/data/oct.db"
+
+
+class TestLocalhostAutoDetection:
+    """Tests for GitHub issue #43: localhost in preset URLs."""
+
+    def test_localhost_replaced_with_host_ip(self, monkeypatch):
+        """station_descriptor_base_url with localhost is auto-replaced with host IP."""
+        monkeypatch.setattr(
+            "opencloudtouch.core.config._detect_host_ip", lambda: "192.168.1.42"
+        )
+        config = AppConfig(
+            station_descriptor_base_url="http://localhost:7777", _env_file=None
+        )
+        assert config.station_descriptor_base_url == "http://192.168.1.42:7777"
+
+    def test_127_0_0_1_replaced_with_host_ip(self, monkeypatch):
+        """station_descriptor_base_url with 127.0.0.1 is auto-replaced."""
+        monkeypatch.setattr(
+            "opencloudtouch.core.config._detect_host_ip", lambda: "10.0.0.5"
+        )
+        config = AppConfig(
+            station_descriptor_base_url="http://127.0.0.1:7777", _env_file=None
+        )
+        assert config.station_descriptor_base_url == "http://10.0.0.5:7777"
+
+    def test_explicit_ip_not_replaced(self, monkeypatch):
+        """Explicitly configured IP is NOT replaced."""
+        monkeypatch.setattr(
+            "opencloudtouch.core.config._detect_host_ip", lambda: "10.0.0.99"
+        )
+        config = AppConfig(
+            station_descriptor_base_url="http://192.168.1.50:7777", _env_file=None
+        )
+        assert config.station_descriptor_base_url == "http://192.168.1.50:7777"
+
+    def test_hostname_not_replaced(self, monkeypatch):
+        """content.api.bose.io hostname is NOT replaced."""
+        monkeypatch.setattr(
+            "opencloudtouch.core.config._detect_host_ip", lambda: "10.0.0.99"
+        )
+        config = AppConfig(
+            station_descriptor_base_url="http://content.api.bose.io:7777",
+            _env_file=None,
+        )
+        assert config.station_descriptor_base_url == "http://content.api.bose.io:7777"
+
+    def test_detection_failure_keeps_localhost(self, monkeypatch):
+        """When IP detection fails, localhost is kept as fallback."""
+        monkeypatch.setattr("opencloudtouch.core.config._detect_host_ip", lambda: None)
+        config = AppConfig(
+            station_descriptor_base_url="http://localhost:7777", _env_file=None
+        )
+        assert config.station_descriptor_base_url == "http://localhost:7777"
+
+    def test_default_value_replaced(self, monkeypatch):
+        """Default value (localhost) is auto-replaced on startup."""
+        monkeypatch.setattr(
+            "opencloudtouch.core.config._detect_host_ip", lambda: "192.168.178.11"
+        )
+        monkeypatch.delenv("OCT_STATION_DESCRIPTOR_BASE_URL", raising=False)
+        config = AppConfig(_env_file=None)
+        assert config.station_descriptor_base_url == "http://192.168.178.11:7777"

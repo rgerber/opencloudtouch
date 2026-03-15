@@ -17,7 +17,7 @@ services:
       - OCT_MOCK_MODE=false
       - OCT_DISCOVERY_ENABLED=true
       - OCT_DISCOVERY_TIMEOUT=5
-      - OCT_STATION_DESCRIPTOR_BASE_URL=http://localhost:7777/stations/preset
+      - OCT_STATION_DESCRIPTOR_BASE_URL=http://localhost:7777
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7777/health')"]

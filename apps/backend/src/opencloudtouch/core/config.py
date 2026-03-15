@@ -3,14 +3,36 @@ Zentrale Konfiguration für OpenCloudTouch.
 Nutzt pydantic-settings für ENV + YAML Validierung.
 """
 
+import logging
 import os
+import socket
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse, urlunparse
 
 import yaml
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
+
+
+def _detect_host_ip() -> str | None:
+    """Detect the local network IP address.
+
+    Uses a UDP connect to a public DNS to determine which network interface
+    the OS would route through. No actual packet is sent.
+
+    Returns:
+        IP address string or None if detection fails.
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except OSError:
+        return None
 
 
 class AppConfig(BaseSettings):
@@ -101,8 +123,29 @@ class AppConfig(BaseSettings):
     # Station Descriptor
     station_descriptor_base_url: str = Field(
         default="http://localhost:7777",
-        description="Base URL for OCT backend (used in Bose preset programming)",
+        description="Base URL for OCT backend (used in Bose preset programming). "
+        "If set to localhost, auto-detected host IP is substituted at startup.",
     )
+
+    @model_validator(mode="after")
+    def _replace_localhost_in_base_url(self) -> "AppConfig":
+        """Replace localhost in station_descriptor_base_url with detected host IP.
+
+        Bose devices cannot reach 'localhost' — it points to themselves.
+        When the user hasn't explicitly configured a host IP, we auto-detect it.
+        See: https://github.com/scheilch/opencloudtouch/issues/43
+        """
+        parsed = urlparse(self.station_descriptor_base_url)
+        if parsed.hostname in ("localhost", "127.0.0.1"):
+            host_ip = _detect_host_ip()
+            if host_ip:
+                new_netloc = f"{host_ip}:{parsed.port}" if parsed.port else host_ip
+                new_url = urlunparse(parsed._replace(netloc=new_netloc))
+                object.__setattr__(self, "station_descriptor_base_url", new_url)
+                logger.info(
+                    f"Auto-detected host IP for preset URLs: {self.station_descriptor_base_url}"
+                )
+        return self
 
     # Production Safety
     allow_dangerous_operations: bool = Field(
