@@ -27,9 +27,8 @@ export default function RadioPresets({ devices = [] }: RadioPresetsProps) {
 
   const currentDevice = devices[currentDeviceIndex];
 
-  const { presets, loading, syncing, error, clearError, syncPresets, assignStation } = usePresets(
-    currentDevice?.device_id
-  );
+  const { presets, loading, syncing, error, clearError, syncPresets, assignStation, removePreset } =
+    usePresets(currentDevice?.device_id);
   const { volume, muted, setDeviceVolume, toggleMute } = useVolume(currentDevice?.device_id);
   const { nowPlaying: npState } = useNowPlaying(currentDevice?.device_id);
   const { show: showToast } = useToast();
@@ -105,6 +104,14 @@ export default function RadioPresets({ devices = [] }: RadioPresetsProps) {
     if (pendingStation && assigningPreset) {
       await doAssign(assigningPreset, pendingStation);
     }
+  };
+
+  const handleDeletePreset = async () => {
+    if (!assigningPreset || !currentDevice?.device_id) return;
+    await removePreset(assigningPreset, currentDevice.device_id);
+    setSearchOpen(false);
+    setAssigningPreset(null);
+    showToast(`Preset ${assigningPreset} gelöscht.`, "success");
   };
 
   const handlePlayPreset = async (presetNumber: number) => {
@@ -281,6 +288,9 @@ export default function RadioPresets({ devices = [] }: RadioPresetsProps) {
           setPendingStation(null);
         }}
         onStationSelect={handleStationSelect}
+        onDelete={handleDeletePreset}
+        presetNumber={assigningPreset}
+        hasExistingPreset={assigningPreset !== null && !!presets[assigningPreset]}
       />
 
       {/* Confirm Overwrite Dialog */}

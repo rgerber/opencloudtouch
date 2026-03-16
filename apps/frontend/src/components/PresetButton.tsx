@@ -123,6 +123,7 @@ export default function PresetButton({
             data-testid={`preset-play-${number}`}
             title="Klicken um Sender zu ändern"
           >
+            <span className="preset-number">{number}</span>
             <div className="preset-station-logo">
               {preset.station_favicon ? (
                 <img
@@ -151,7 +152,6 @@ export default function PresetButton({
                 {getStationInitials(preset.station_name)}
               </span>
             </div>
-            <span className="preset-number">{number}</span>
             <span className="preset-name">{preset.station_name}</span>
             <CloudBadge isCloudDependent={isCloudDependent(preset)} source={preset.source} />
           </button>

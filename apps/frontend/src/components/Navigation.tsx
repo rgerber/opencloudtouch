@@ -18,18 +18,10 @@ export default function Navigation() {
           <span className="nav-icon">📻</span>
           <span className="nav-label">Presets</span>
         </NavLink>
-        {/* <NavLink to={withDevice("/local")} className="nav-link">
-          <span className="nav-icon">🎵</span>
-          <span className="nav-label">Control</span>
-        </NavLink>
         <NavLink to={withDevice("/multiroom")} className="nav-link">
           <span className="nav-icon">🔊</span>
           <span className="nav-label">Zones</span>
         </NavLink>
-        <NavLink to={withDevice("/firmware")} className="nav-link">
-          <span className="nav-icon">⚙️</span>
-          <span className="nav-label">Firmware</span>
-        </NavLink> */}
         <NavLink to={withDevice("/settings")} className="nav-link">
           <span className="nav-icon">⚙️</span>
           <span className="nav-label">Settings</span>

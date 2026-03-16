@@ -28,6 +28,9 @@
   padding: var(--space-lg);
   box-shadow: var(--shadow-md);
   border-left: 4px solid var(--color-accent);
+  max-width: var(--card-width);
+  width: 100%;
+  margin: 0 auto;
 }
 
 .zone-header {
@@ -58,8 +61,9 @@
 
 .zone-device {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm) var(--space-md);
   padding: var(--space-sm) var(--space-md);
   background-color: var(--color-bg-darker);
   border-radius: var(--border-radius-sm);
@@ -345,14 +349,22 @@
 
 /* ---- Zone Member Volume ---- */
 .zone-member-volume {
-  margin-top: var(--space-xs);
   padding: 0 var(--space-xs);
+}
+
+@media (max-width: 768px) {
+  .zone-member-volume {
+    flex-basis: 100%;
+    padding: var(--space-xs) 0 0;
+  }
 }
 
 .zone-device-header {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
 }
 
 /* ---- Editable Zone Name ---- */

@@ -22,10 +22,10 @@ describe("Navigation Component", () => {
   it("provides navigation links to all app sections", () => {
     renderNavigation();
 
-    // Only Presets and Settings are currently visible; Control/Zones/Firmware are
-    // commented out in Navigation.tsx pending full implementation
+    // Presets, Zones, and Settings are visible in Navigation
     const expectedLinks = [
       { text: "Presets", path: "/" },
+      { text: "Zones", path: "/multiroom" },
       { text: "Settings", path: "/settings" },
     ];
 

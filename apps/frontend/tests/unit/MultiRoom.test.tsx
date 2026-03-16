@@ -269,6 +269,64 @@ describe("MultiRoom - Zone Display", () => {
 
     expect(screen.getByText("Mein Wohnzimmer")).toBeInTheDocument();
   });
+
+  test("should display both master and slave in zone-devices", () => {
+    render(<MultiRoom devices={mockDevices} />);
+
+    // Both members appear in zone AND device-grid → at least 2 occurrences
+    expect(screen.getAllByText("Living Room").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Schlafzimmer").length).toBeGreaterThanOrEqual(2);
+
+    // Role badges (only in zone section)
+    const masterBadges = screen.getAllByText("Master");
+    const slaveBadges = screen.getAllByText("Slave");
+    expect(masterBadges.length).toBeGreaterThanOrEqual(1);
+    expect(slaveBadges.length).toBeGreaterThanOrEqual(1);
+
+    // Volume slider for each zone member
+    const sliders = screen.getAllByTestId("volume-slider");
+    expect(sliders).toHaveLength(2);
+  });
+
+  test("should display master+slave when master is ST10 and slave is ST30", () => {
+    const zone: ZoneInfo = {
+      master_id: "ST10-001",
+      master_ip: "192.168.1.10",
+      is_master: true,
+      members: [
+        { device_id: "ST10-001", ip_address: "192.168.1.10", role: "master", name: "Living Room" },
+        { device_id: "ST30-002", ip_address: "192.168.1.20", role: "slave", name: "Schlafzimmer" },
+      ],
+    };
+    mockZonesState = { zones: [zone], isLoading: false, error: null };
+    render(<MultiRoom devices={mockDevices} />);
+
+    // Names appear in zone-devices + device grid
+    expect(screen.getAllByText("Living Room").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Schlafzimmer").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByTestId("volume-slider")).toHaveLength(2);
+  });
+
+  test("should display master+slave when master is ST30 and slave is ST10", () => {
+    const zone: ZoneInfo = {
+      master_id: "ST30-002",
+      master_ip: "192.168.1.20",
+      is_master: true,
+      members: [
+        { device_id: "ST30-002", ip_address: "192.168.1.20", role: "master", name: "Schlafzimmer" },
+        { device_id: "ST10-001", ip_address: "192.168.1.10", role: "slave", name: "Living Room" },
+      ],
+    };
+    mockZonesState = { zones: [zone], isLoading: false, error: null };
+    render(<MultiRoom devices={mockDevices} />);
+
+    expect(screen.getAllByText("Schlafzimmer").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Living Room").length).toBeGreaterThanOrEqual(2);
+    // Master badge only in zone section (device selection uses different badges)
+    const masterBadges = screen.getAllByText("Master");
+    expect(masterBadges.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByTestId("volume-slider")).toHaveLength(2);
+  });
 });
 
 describe("MultiRoom - Zone Management", () => {

@@ -104,7 +104,7 @@ vi.mock("../../src/components/PresetButton", () => ({
 }));
 
 vi.mock("../../src/components/RadioSearch", () => ({
-  default: ({ isOpen, onClose, onStationSelect }: { isOpen: boolean; onClose: () => void; onStationSelect: (station: { stationuuid: string; name: string; country: string; url: string; homepage: string; favicon: string }) => void }) => {
+  default: ({ isOpen, onClose, onStationSelect, onDelete, hasExistingPreset }: { isOpen: boolean; onClose: () => void; onStationSelect: (station: { stationuuid: string; name: string; country: string; url: string; homepage: string; favicon: string }) => void; onDelete?: () => void; hasExistingPreset?: boolean }) => {
     if (!isOpen) return null;
     return (
       <div data-testid="radio-search-modal">
@@ -126,6 +126,11 @@ vi.mock("../../src/components/RadioSearch", () => ({
         >
           Select Test Radio
         </button>
+        {hasExistingPreset && onDelete && (
+          <button onClick={onDelete} data-testid="search-delete-preset">
+            Delete Preset
+          </button>
+        )}
       </div>
     );
   },
@@ -434,6 +439,85 @@ describe("RadioPresets Page", () => {
 
       // Preset should still show old name
       expect(screen.getByTestId("preset-5-name")).toHaveTextContent("Radio Five");
+    });
+  });
+
+  describe("Preset Deletion", () => {
+    it("should show delete button in search modal for occupied preset", async () => {
+      vi.mocked(presetsApi.getDevicePresets).mockResolvedValue([
+        {
+          id: 1,
+          device_id: "AABBCC123456",
+          preset_number: 3,
+          station_uuid: "uuid-3",
+          station_name: "Old Station",
+          station_url: "http://old.com",
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      ]);
+
+      await act(async () => {
+        render(<RadioPresets devices={mockDevices} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("preset-3-name")).toBeInTheDocument();
+      });
+
+      // Open search for occupied preset
+      fireEvent.click(screen.getByTestId("preset-3-change"));
+
+      // Delete button should be visible
+      expect(screen.getByTestId("search-delete-preset")).toBeInTheDocument();
+    });
+
+    it("should delete preset when delete button is clicked", async () => {
+      vi.mocked(presetsApi.getDevicePresets).mockResolvedValue([
+        {
+          id: 1,
+          device_id: "AABBCC123456",
+          preset_number: 2,
+          station_uuid: "uuid-2",
+          station_name: "Delete Me",
+          station_url: "http://delete.com",
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      ]);
+
+      await act(async () => {
+        render(<RadioPresets devices={mockDevices} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("preset-2-name")).toHaveTextContent("Delete Me");
+      });
+
+      // Open search → click delete
+      fireEvent.click(screen.getByTestId("preset-2-change"));
+      fireEvent.click(screen.getByTestId("search-delete-preset"));
+
+      await waitFor(() => {
+        expect(presetsApi.clearPreset).toHaveBeenCalledWith("AABBCC123456", 2);
+      });
+
+      // Modal should close and preset should be gone
+      await waitFor(() => {
+        expect(screen.queryByTestId("radio-search-modal")).not.toBeInTheDocument();
+      });
+    });
+
+    it("should not show delete button for empty preset", async () => {
+      await act(async () => {
+        render(<RadioPresets devices={mockDevices} />);
+      });
+
+      // Open search for empty preset
+      fireEvent.click(screen.getByTestId("preset-1-assign"));
+
+      // Delete button should NOT be visible
+      expect(screen.queryByTestId("search-delete-preset")).not.toBeInTheDocument();
     });
   });
 

@@ -87,6 +87,26 @@ class TestGetZoneStatus:
         assert roles["DEV001"] == "master"
         assert roles["DEV002"] == "slave"
 
+    @pytest.mark.asyncio
+    async def test_master_always_in_members_when_missing(self):
+        """Master is auto-inserted when device returns members without master."""
+        client = _make_client()
+        # Simulate slave-only response (some SoundTouch firmwares omit master)
+        slave = MagicMock()
+        slave.DeviceId = "DEV002"
+        slave.IpAddress = "192.168.1.101"
+        zone = _make_mock_zone(members=[slave])
+        client._client.GetZoneStatus.return_value = zone
+
+        result = await client.get_zone_status()
+        assert len(result.members) == 2
+        ids = {m.device_id for m in result.members}
+        assert "DEV001" in ids
+        assert "DEV002" in ids
+        master_member = next(m for m in result.members if m.device_id == "DEV001")
+        assert master_member.role == "master"
+        assert result.members[0].device_id == "DEV001"  # master is first
+
 
 class TestCreateZone:
     """Tests for create_zone."""
