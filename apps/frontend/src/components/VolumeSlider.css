@@ -1,4 +1,4 @@
-/* Volume Slider - YouTube-style compact control */
+/* Volume Slider — A3 DOM-direct, 60fps smooth */
 .volume-slider {
   display: flex;
   align-items: center;
@@ -16,6 +16,7 @@
   padding: 0;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   min-width: auto;
   min-height: auto;
   outline: none;
@@ -30,39 +31,70 @@
   fill: #cc4444;
 }
 
-.volume-input {
+/* Track container — full 40px height = touch target */
+.volume-track {
   flex: 1;
-  min-width: 0;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 3px;
-  outline: none;
+  position: relative;
+  height: 40px;
+  display: flex;
+  align-items: center;
   cursor: pointer;
+  touch-action: none;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.volume-track:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
   border-radius: 2px;
 }
 
-.volume-input:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 4px;
-}
-
-.volume-input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  height: 12px;
-  width: 12px;
-  border-radius: 50%;
-  background: #fff;
-  border: none;
-}
-
-.volume-input::-moz-range-thumb {
-  height: 12px;
-  width: 12px;
-  border-radius: 50%;
-  background: #fff;
-  border: none;
-}
-
-.volume-input.muted {
+.volume-track.muted {
   opacity: 0.5;
+}
+
+/* Background rail */
+.volume-track-bg {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* Colored fill */
+.volume-track-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  pointer-events: none;
+  /* NO transition — DOM-direct updates must be instant */
+}
+
+/* Thumb — always visible */
+.volume-thumb {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  /* NO left-transition — kills the hakelig effect */
+  transition: transform 0.1s ease; /* only scale on :active */
+}
+
+.volume-track:active .volume-thumb {
+  transform: translate(-50%, -50%) scale(1.2);
 }

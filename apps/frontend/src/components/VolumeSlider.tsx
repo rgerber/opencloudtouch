@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import "./VolumeSlider.css";
 
 interface VolumeSliderProps {
@@ -12,23 +13,87 @@ const VOL_ICON =
 const MUTE_ICON =
   "M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z";
 
-const accentColor = "#5dade2";
-const mutedFillColor = "rgba(255, 255, 255, 0.35)";
-const grayColor = "rgba(255, 255, 255, 0.2)";
+const ACCENT_COLOR = "#5dade2";
+const MUTED_COLOR = "rgba(255, 255, 255, 0.35)";
+const THROTTLE_MS = 150;
+
+function calcValueFromClientX(trackEl: HTMLDivElement, clientX: number): number {
+  const { left, width } = trackEl.getBoundingClientRect();
+  return Math.round(Math.max(0, Math.min(100, ((clientX - left) / width) * 100)));
+}
 
 export default function VolumeSlider({
   volume,
   onVolumeChange,
   muted,
   onMuteToggle,
-}: VolumeSliderProps) {
-  const fillColor = muted ? mutedFillColor : accentColor;
-  const sliderBg = `linear-gradient(to right, ${fillColor} ${volume}%, ${grayColor} ${volume}%)`;
+}: Readonly<VolumeSliderProps>) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const fillRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastClientX = useRef<number>(0);
+  const isDragging = useRef(false);
+  const onVolumeChangeRef = useRef(onVolumeChange);
+  onVolumeChangeRef.current = onVolumeChange;
+  const lastSentAt = useRef<number>(0);
+
+  const fillColor = muted ? MUTED_COLOR : ACCENT_COLOR;
+
+  const calcValue = (clientX: number): number => {
+    if (!trackRef.current) return volume;
+    return calcValueFromClientX(trackRef.current, clientX);
+  };
+
+  const applyValueDOM = (val: number) => {
+    const pct = `${val}%`;
+    if (fillRef.current) fillRef.current.style.width = pct;
+    if (thumbRef.current) thumbRef.current.style.left = pct;
+  };
+
+  const scheduleFrame = () => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      if (!isDragging.current) return;
+      const val = calcValue(lastClientX.current);
+      applyValueDOM(val);
+      const now = performance.now();
+      if (now - lastSentAt.current >= THROTTLE_MS) {
+        lastSentAt.current = now;
+        onVolumeChangeRef.current(val);
+      }
+      scheduleFrame();
+    });
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDragging.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    lastClientX.current = e.clientX;
+    applyValueDOM(calcValue(e.clientX));
+    scheduleFrame();
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return;
+    lastClientX.current = e.clientX;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    onVolumeChangeRef.current(calcValue(e.clientX));
+  };
 
   return (
     <div className="volume-slider">
       <button
-        className={`volume-mute ${muted ? "muted" : ""}`}
+        className={`volume-mute${muted ? " muted" : ""}`}
         onClick={onMuteToggle}
         aria-label={muted ? "Unmute" : "Mute"}
       >
@@ -36,17 +101,34 @@ export default function VolumeSlider({
           <path fill="currentColor" d={muted || volume === 0 ? MUTE_ICON : VOL_ICON} />
         </svg>
       </button>
-      <input
-        type="range"
-        className={`volume-input ${muted ? "muted" : ""}`}
-        min="0"
-        max="100"
-        value={volume}
-        onInput={(e) => onVolumeChange(parseInt((e.target as HTMLInputElement).value))}
-        onChange={(e) => onVolumeChange(parseInt(e.target.value))}
+      <div
+        ref={trackRef}
+        className={`volume-track${muted ? " muted" : ""}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        role="slider"
+        aria-valuenow={volume}
+        aria-valuemin={0}
+        aria-valuemax={100}
         aria-label="Volume"
-        style={{ background: sliderBg }}
-      />
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft" || e.key === "ArrowDown")
+            onVolumeChange(Math.max(0, volume - 5));
+          if (e.key === "ArrowRight" || e.key === "ArrowUp")
+            onVolumeChange(Math.min(100, volume + 5));
+        }}
+      >
+        <div className="volume-track-bg" />
+        <div
+          ref={fillRef}
+          className="volume-track-fill"
+          style={{ width: `${volume}%`, backgroundColor: fillColor }}
+        />
+        <div className="volume-thumb" style={{ left: `${volume}%` }} />
+      </div>
     </div>
   );
 }
