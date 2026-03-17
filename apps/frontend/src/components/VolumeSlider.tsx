@@ -15,7 +15,6 @@ const MUTE_ICON =
 
 const ACCENT_COLOR = "#5dade2";
 const MUTED_COLOR = "rgba(255, 255, 255, 0.35)";
-const THROTTLE_MS = 150;
 
 function calcValueFromClientX(trackEl: HTMLDivElement, clientX: number): number {
   const { left, width } = trackEl.getBoundingClientRect();
@@ -36,7 +35,6 @@ export default function VolumeSlider({
   const isDragging = useRef(false);
   const onVolumeChangeRef = useRef(onVolumeChange);
   onVolumeChangeRef.current = onVolumeChange;
-  const lastSentAt = useRef<number>(0);
 
   // Sync prop → DOM only when NOT dragging.
   // During drag, refs control the visual position exclusively.
@@ -66,13 +64,7 @@ export default function VolumeSlider({
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
       if (!isDragging.current) return;
-      const val = calcValue(lastClientX.current);
-      applyValueDOM(val);
-      const now = performance.now();
-      if (now - lastSentAt.current >= THROTTLE_MS) {
-        lastSentAt.current = now;
-        onVolumeChangeRef.current(val);
-      }
+      applyValueDOM(calcValue(lastClientX.current));
       scheduleFrame();
     });
   };
