@@ -16,8 +16,9 @@ from opencloudtouch.setup.models import (
     SetupStep,
     get_model_instructions,
 )
+from opencloudtouch.core.dependencies import get_setup_service
 from opencloudtouch.setup.routes import router
-from opencloudtouch.setup.service import SetupService, get_setup_service
+from opencloudtouch.setup.service import SetupService
 from opencloudtouch.setup.wizard_routes import wizard_router
 
 

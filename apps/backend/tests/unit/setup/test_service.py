@@ -14,7 +14,7 @@ from opencloudtouch.setup.models import (
     SetupStatus,
     SetupStep,
 )
-from opencloudtouch.setup.service import SetupService, get_setup_service
+from opencloudtouch.setup.service import SetupService
 
 
 @pytest.fixture(autouse=True)
@@ -36,17 +36,6 @@ class TestSetupServiceInitialization:
         """Test service initializes with empty active setups."""
         service = SetupService()
         assert service._active_setups == {}
-
-    def test_get_setup_service_singleton(self):
-        """Test get_setup_service returns singleton."""
-        # Reset singleton for test
-        import opencloudtouch.setup.service as service_module
-
-        service_module._setup_service = None
-
-        service1 = get_setup_service()
-        service2 = get_setup_service()
-        assert service1 is service2
 
 
 class TestSetupServiceModelInstructions:

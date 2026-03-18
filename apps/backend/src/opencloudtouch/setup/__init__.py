@@ -15,7 +15,7 @@ from opencloudtouch.setup.models import (
     get_model_instructions,
 )
 from opencloudtouch.setup.routes import router as setup_router
-from opencloudtouch.setup.service import SetupService, get_setup_service
+from opencloudtouch.setup.service import SetupService
 
 __all__ = [
     "SetupStatus",
@@ -24,6 +24,5 @@ __all__ = [
     "ModelInstructions",
     "get_model_instructions",
     "SetupService",
-    "get_setup_service",
     "setup_router",
 ]

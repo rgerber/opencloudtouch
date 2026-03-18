@@ -10,7 +10,7 @@ Orchestrates the device configuration process:
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Awaitable, Callable, Dict, Optional
 
 from opencloudtouch.core.config import get_config
@@ -40,9 +40,10 @@ class SetupService:
     Handles the full setup flow from SSH connection to BMX URL modification.
     """
 
-    def __init__(self):
+    def __init__(self, device_repo=None):
         self._active_setups: Dict[str, SetupProgress] = {}
         self._config = get_config()
+        self._device_repo = device_repo
 
     def get_setup_status(self, device_id: str) -> Optional[SetupProgress]:
         """Get current setup status for a device."""
@@ -136,8 +137,18 @@ class SetupService:
 
             await update_progress(SetupStep.COMPLETE, "Setup abgeschlossen!")
             progress.status = SetupStatus.CONFIGURED
-            progress.completed_at = datetime.utcnow()
+            progress.completed_at = datetime.now(UTC)
             logger.info(f"Device {device_id} setup completed successfully")
+
+            # Persist to device table
+            if self._device_repo:
+                await self._device_repo.update_setup_status(
+                    device_id=device_id,
+                    setup_status="configured",
+                    ssh_permanent=True,
+                    setup_completed_at=progress.completed_at,
+                )
+
             return progress
 
         except Exception as e:
@@ -145,6 +156,14 @@ class SetupService:
             progress.status = SetupStatus.FAILED
             progress.error = str(e)
             progress.message = "Setup fehlgeschlagen"
+
+            # Persist failure
+            if self._device_repo:
+                await self._device_repo.update_setup_status(
+                    device_id=device_id,
+                    setup_status="failed",
+                )
+
             return progress
         finally:
             if device_id in self._active_setups:
@@ -317,15 +336,3 @@ class SetupService:
             logger.error(f"Verification failed: {e}")
 
         return result
-
-
-# Singleton instance
-_setup_service: Optional[SetupService] = None
-
-
-def get_setup_service() -> SetupService:
-    """Get or create the setup service singleton."""
-    global _setup_service
-    if _setup_service is None:
-        _setup_service = SetupService()
-    return _setup_service

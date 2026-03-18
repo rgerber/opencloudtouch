@@ -17,7 +17,8 @@ from opencloudtouch.setup.api_models import (
     SetupRequest,
 )
 from opencloudtouch.setup.models import SetupStatus
-from opencloudtouch.setup.service import SetupService, get_setup_service
+from opencloudtouch.core.dependencies import get_setup_service
+from opencloudtouch.setup.service import SetupService
 from opencloudtouch.setup.ssh_client import SoundTouchSSHClient
 
 logger = logging.getLogger(__name__)

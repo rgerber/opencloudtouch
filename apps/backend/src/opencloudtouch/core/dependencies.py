@@ -3,6 +3,10 @@
 Centralizes dependency management using FastAPI app.state.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import Request
 
 from opencloudtouch.devices.repository import DeviceRepository
@@ -13,6 +17,9 @@ from opencloudtouch.recents.repository import RecentsRepository
 from opencloudtouch.settings.repository import SettingsRepository
 from opencloudtouch.settings.service import SettingsService
 from opencloudtouch.zones.service import ZoneService
+
+if TYPE_CHECKING:
+    from opencloudtouch.setup.service import SetupService
 
 
 async def get_device_repo(request: Request) -> DeviceRepository:
@@ -53,3 +60,8 @@ async def get_settings_service(request: Request) -> SettingsService:
 async def get_zone_service(request: Request) -> ZoneService:
     """Get zone service instance from app.state (FastAPI dependency)."""
     return request.app.state.zone_service
+
+
+async def get_setup_service(request: Request) -> SetupService:
+    """Get setup service instance from app.state (FastAPI dependency)."""
+    return request.app.state.setup_service

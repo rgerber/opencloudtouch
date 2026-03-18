@@ -10,7 +10,14 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 /**
  * Setup status enum matching backend
  */
-export type SetupStatus = "unconfigured" | "pending" | "configured" | "failed";
+export type SetupStatus =
+  | "unconfigured"
+  | "pending"
+  | "configured"
+  | "failed"
+  | "outdated"
+  | "offline"
+  | "unknown";
 
 /**
  * Setup step enum matching backend

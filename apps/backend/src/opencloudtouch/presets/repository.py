@@ -38,16 +38,7 @@ class PresetRepository(BaseRepository):
 
     async def _create_schema(self) -> None:
         """Create presets table, indexes and apply schema migrations."""
-        # Step 1: Schema-version tracking table (audit trail + idempotency)
-        await self._conn.execute("""
-            CREATE TABLE IF NOT EXISTS schema_versions (
-                version     INTEGER PRIMARY KEY,
-                applied_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                description TEXT
-            )
-            """)
-
-        # Step 2: Base presets table (source column added via migration v1)
+        # Base presets table (source column added via migration v1)
         await self._conn.execute("""
             CREATE TABLE IF NOT EXISTS presets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,14 +55,14 @@ class PresetRepository(BaseRepository):
             )
             """)
 
-        # Step 3: Apply migrations idempotently (ordered by version)
+        # Migrations (v1–v99 reserved for presets)
         await self._apply_migration(
             version=1,
             description="Add source column to presets",
             sql="ALTER TABLE presets ADD COLUMN source TEXT",
         )
 
-        # Step 4: Indexes
+        # Indexes
         await self._conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_presets_device_id ON presets(device_id)
             """)
@@ -81,45 +72,6 @@ class PresetRepository(BaseRepository):
             """)
 
         await self._conn.commit()
-
-    async def _apply_migration(self, version: int, description: str, sql: str) -> None:
-        """Apply a single schema migration idempotently.
-
-        Checks ``schema_versions`` first; skips the migration if it has
-        already been applied.  On success, records the version so the
-        migration is never repeated.
-
-        Args:
-            version:     Monotonically increasing migration number.
-            description: Human-readable description for the audit log.
-            sql:         DDL statement to execute (e.g. ALTER TABLE …).
-        """
-        cursor = await self._conn.execute(
-            "SELECT version FROM schema_versions WHERE version = ?",
-            (version,),
-        )
-        if await cursor.fetchone():
-            return  # Already applied — idempotent
-
-        try:
-            await self._conn.execute(sql)
-        except Exception as e:  # noqa: BLE001
-            # Treat "duplicate column name" as idempotent: the column was added
-            # directly in the base DDL before migration tracking was introduced
-            # (e.g. a production DB that predates schema_versions).
-            if "duplicate column name" in str(e).lower():
-                logger.info(
-                    "Migration v%d: column already exists, marking as applied (idempotent)",
-                    version,
-                )
-            else:
-                raise
-
-        await self._conn.execute(
-            "INSERT INTO schema_versions (version, description) VALUES (?, ?)",
-            (version, description),
-        )
-        logger.info("Applied schema migration v%d: %s", version, description)
 
     async def set_preset(self, preset: Preset) -> Preset:
         """

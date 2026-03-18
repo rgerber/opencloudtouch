@@ -28,6 +28,9 @@ class Device:
         schema_version: Optional[str] = None,
         last_seen: Optional[datetime] = None,
         id: Optional[int] = None,
+        setup_status: str = "unknown",
+        ssh_permanent: bool = False,
+        setup_completed_at: Optional[datetime] = None,
     ):
         self.id = id
         self.device_id = device_id
@@ -40,6 +43,9 @@ class Device:
             firmware_version
         )
         self.last_seen = last_seen or datetime.now(UTC)
+        self.setup_status = setup_status
+        self.ssh_permanent = ssh_permanent
+        self.setup_completed_at = setup_completed_at
 
     @staticmethod
     def _extract_schema_version(firmware_version: str) -> str:
@@ -70,6 +76,11 @@ class Device:
             "firmware_version": self.firmware_version,
             "schema_version": self.schema_version,
             "last_seen": self.last_seen.isoformat() if self.last_seen else None,
+            "setup_status": self.setup_status,
+            "ssh_permanent": self.ssh_permanent,
+            "setup_completed_at": (
+                self.setup_completed_at.isoformat() if self.setup_completed_at else None
+            ),
         }
 
 
@@ -77,7 +88,7 @@ class DeviceRepository(BaseRepository):
     """Repository for device persistence."""
 
     async def _create_schema(self) -> None:
-        """Create devices table and indexes."""
+        """Create devices table, indexes, and apply migrations."""
         await self._conn.execute("""
             CREATE TABLE IF NOT EXISTS devices (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,20 +105,37 @@ class DeviceRepository(BaseRepository):
             )
         """)
 
-        # Migration: Add schema_version column if it doesn't exist
+        # Legacy migration: schema_version (pre-migration-framework)
         try:
             await self._conn.execute("SELECT schema_version FROM devices LIMIT 1")
         except aiosqlite.OperationalError:
             logger.info("Migrating devices table: Adding schema_version column")
-            await self._conn.execute("""
-                ALTER TABLE devices ADD COLUMN schema_version TEXT
-            """)
+            await self._conn.execute(
+                "ALTER TABLE devices ADD COLUMN schema_version TEXT"
+            )
             await self._conn.commit()
 
+        # Migrations v100–v199 reserved for devices
+        await self._apply_migration(
+            version=100,
+            description="Add setup_status column to devices",
+            sql="ALTER TABLE devices ADD COLUMN setup_status TEXT DEFAULT 'unknown'",
+        )
+        await self._apply_migration(
+            version=101,
+            description="Add ssh_permanent column to devices",
+            sql="ALTER TABLE devices ADD COLUMN ssh_permanent INTEGER DEFAULT 0",
+        )
+        await self._apply_migration(
+            version=102,
+            description="Add setup_completed_at column to devices",
+            sql="ALTER TABLE devices ADD COLUMN setup_completed_at TIMESTAMP",
+        )
+
+        # Indexes
         await self._conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_devices_device_id ON devices(device_id)
         """)
-
         await self._conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_ip ON devices(ip)
         """)
@@ -165,29 +193,15 @@ class DeviceRepository(BaseRepository):
         db = self._ensure_initialized()
 
         cursor = await db.execute("""
-            SELECT id, device_id, ip, name, model, mac_address, firmware_version, schema_version, last_seen
+            SELECT id, device_id, ip, name, model, mac_address, firmware_version,
+                   schema_version, last_seen, setup_status, ssh_permanent,
+                   setup_completed_at
             FROM devices
             ORDER BY last_seen DESC
         """)
 
         rows = await cursor.fetchall()
-
-        devices = [
-            Device(
-                id=row[0],
-                device_id=row[1],
-                ip=row[2],
-                name=row[3],
-                model=row[4],
-                mac_address=row[5],
-                firmware_version=row[6],
-                schema_version=row[7],
-                last_seen=datetime.fromisoformat(row[8]) if row[8] else None,
-            )
-            for row in rows
-        ]
-
-        return devices
+        return [self._row_to_device(row) for row in rows]
 
     async def get_by_device_id(self, device_id: str) -> Optional[Device]:
         """Get device by device_id."""
@@ -195,7 +209,9 @@ class DeviceRepository(BaseRepository):
 
         cursor = await db.execute(
             """
-            SELECT id, device_id, ip, name, model, mac_address, firmware_version, schema_version, last_seen
+            SELECT id, device_id, ip, name, model, mac_address, firmware_version,
+                   schema_version, last_seen, setup_status, ssh_permanent,
+                   setup_completed_at
             FROM devices
             WHERE device_id = ?
         """,
@@ -203,21 +219,43 @@ class DeviceRepository(BaseRepository):
         )
 
         row = await cursor.fetchone()
-
         if not row:
             return None
+        return self._row_to_device(row)
 
-        return Device(
-            id=row[0],
-            device_id=row[1],
-            ip=row[2],
-            name=row[3],
-            model=row[4],
-            mac_address=row[5],
-            firmware_version=row[6],
-            schema_version=row[7],
-            last_seen=datetime.fromisoformat(row[8]) if row[8] else None,
+    async def update_setup_status(
+        self,
+        device_id: str,
+        setup_status: str,
+        ssh_permanent: Optional[bool] = None,
+        setup_completed_at: Optional[datetime] = None,
+    ) -> None:
+        """Update setup-related fields for a device.
+
+        Only updates fields that are explicitly provided (not None).
+        """
+        db = self._ensure_initialized()
+
+        fields = ["setup_status = ?"]
+        params: list = [setup_status]
+
+        if ssh_permanent is not None:
+            fields.append("ssh_permanent = ?")
+            params.append(int(ssh_permanent))
+
+        if setup_completed_at is not None:
+            fields.append("setup_completed_at = ?")
+            params.append(setup_completed_at.isoformat())
+
+        fields.append("updated_at = CURRENT_TIMESTAMP")
+        params.append(device_id)
+
+        await db.execute(
+            f"UPDATE devices SET {', '.join(fields)} WHERE device_id = ?",  # nosec B608 - field names are hardcoded constants
+            params,
         )
+        await db.commit()
+        logger.info(f"Updated setup status for {device_id}: {setup_status}")
 
     async def delete_all(self) -> int:
         """Delete all devices from database. Returns number of deleted rows."""
@@ -230,3 +268,26 @@ class DeviceRepository(BaseRepository):
         logger.debug(f"Deleted all devices from database: {deleted_count} rows")
 
         return deleted_count
+
+    @staticmethod
+    def _row_to_device(row: tuple) -> Device:
+        """Map a database row to a Device model.
+
+        Column order: id, device_id, ip, name, model, mac_address,
+        firmware_version, schema_version, last_seen, setup_status,
+        ssh_permanent, setup_completed_at.
+        """
+        return Device(
+            id=row[0],
+            device_id=row[1],
+            ip=row[2],
+            name=row[3],
+            model=row[4],
+            mac_address=row[5],
+            firmware_version=row[6],
+            schema_version=row[7],
+            last_seen=datetime.fromisoformat(row[8]) if row[8] else None,
+            setup_status=row[9] or "unknown",
+            ssh_permanent=bool(row[10]) if row[10] is not None else False,
+            setup_completed_at=(datetime.fromisoformat(row[11]) if row[11] else None),
+        )

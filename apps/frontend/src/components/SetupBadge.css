@@ -104,6 +104,33 @@
   }
 }
 
+/* Outdated State - Amber/Orange warning */
+.badge-outdated {
+  border-color: #d97706;
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.1);
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+.badge-outdated:hover {
+  border-color: #f59e0b;
+  background: rgba(217, 119, 6, 0.2);
+}
+
+/* Offline State - Dimmed gray */
+.badge-offline {
+  border-color: rgba(100, 100, 100, 0.4);
+  color: rgba(100, 100, 100, 0.5);
+  background: transparent;
+  opacity: 0.5;
+}
+
+.badge-offline:hover {
+  border-color: rgba(100, 100, 100, 0.6);
+  background: rgba(100, 100, 100, 0.08);
+  opacity: 0.7;
+}
+
 .badge-icon {
   display: flex;
   align-items: center;

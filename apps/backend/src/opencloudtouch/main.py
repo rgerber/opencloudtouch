@@ -27,6 +27,7 @@ from opencloudtouch.core.static_files import (
 )
 from opencloudtouch.db import DeviceRepository
 from opencloudtouch.devices.adapter import get_discovery_adapter
+from opencloudtouch.devices.health_check import DeviceHealthCheck
 from opencloudtouch.devices.api.preset_stream_routes import (
     descriptor_router as device_descriptor_router,
 )
@@ -144,9 +145,26 @@ async def lifespan(app: FastAPI):
     app.state.settings_service = settings_service
     logger.info("Settings service initialized")
 
+    # Initialize setup service (with device_repo for persistence)
+    from opencloudtouch.setup.service import SetupService
+
+    setup_service = SetupService(device_repo=device_repo)
+    app.state.setup_service = setup_service
+    logger.info("Setup service initialized")
+
+    # Start background health-check (not in mock/CI mode)
+    health_check = DeviceHealthCheck(device_repo)
+    if not cfg.mock_mode:
+        health_check.start()
+        logger.info("Device health-check started")
+    app.state.health_check = health_check
+
     yield
 
     # Shutdown
+    await health_check.stop()
+    logger.info("Device health-check stopped")
+
     await device_repo.close()
     logger.info("Device repository closed")
 

@@ -17,6 +17,9 @@ class SetupStatus(str, Enum):
     PENDING = "pending"  # Setup in progress
     CONFIGURED = "configured"  # Successfully configured
     FAILED = "failed"  # Setup failed
+    OUTDATED = "outdated"  # Device points to different/old OCT instance
+    OFFLINE = "offline"  # Device not reachable (last_seen > threshold)
+    UNKNOWN = "unknown"  # Initial state, not yet checked
 
 
 class SetupStep(str, Enum):

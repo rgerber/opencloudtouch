@@ -1,6 +1,7 @@
 """Base repository class for SQLite persistence.
 
-Provides common database connection and lifecycle management for all repositories.
+Provides common database connection, lifecycle management, and schema
+migration support for all repositories.
 """
 
 import logging
@@ -16,7 +17,8 @@ class BaseRepository:
     """Base class for all SQLite repositories.
 
     Provides common patterns for database initialization, connection management,
-    and cleanup. Subclasses must implement `_create_schema()` to define tables.
+    schema migrations, and cleanup.
+    Subclasses must implement ``_create_schema()`` to define tables.
     """
 
     def __init__(self, db_path: str | Path):
@@ -39,6 +41,16 @@ class BaseRepository:
         # Connect to database
         self._db = await aiosqlite.connect(str(self.db_path))
 
+        # Global schema_versions table (shared across all repos in the same DB)
+        await self._db.execute("""
+            CREATE TABLE IF NOT EXISTS schema_versions (
+                version     INTEGER PRIMARY KEY,
+                applied_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                description TEXT
+            )
+        """)
+        await self._db.commit()
+
         # Create schema (implemented by subclasses)
         await self._create_schema()
 
@@ -52,6 +64,48 @@ class BaseRepository:
         raise NotImplementedError(
             "Subclasses must implement _create_schema()"
         )  # pragma: no cover
+
+    async def _apply_migration(self, version: int, description: str, sql: str) -> None:
+        """Apply a single schema migration idempotently.
+
+        Checks ``schema_versions`` first; skips if already applied.
+        On success, records the version so the migration is never repeated.
+
+        Migration numbers are **global** across all repositories sharing a DB
+        file.  Use ranges to avoid collisions (e.g. 1–99 presets, 100–199
+        devices, 200–299 settings).
+
+        Args:
+            version:     Monotonically increasing migration number.
+            description: Human-readable description for the audit log.
+            sql:         DDL statement to execute (e.g. ``ALTER TABLE …``).
+        """
+        cursor = await self._conn.execute(
+            "SELECT version FROM schema_versions WHERE version = ?",
+            (version,),
+        )
+        if await cursor.fetchone():
+            return  # Already applied — idempotent
+
+        try:
+            await self._conn.execute(sql)
+        except Exception as e:  # noqa: BLE001
+            # Treat "duplicate column name" as idempotent: the column was added
+            # directly in the base DDL before migration tracking was introduced.
+            if "duplicate column name" in str(e).lower():
+                logger.info(
+                    "Migration v%d: column already exists, marking as applied",
+                    version,
+                )
+            else:
+                raise
+
+        await self._conn.execute(
+            "INSERT INTO schema_versions (version, description) VALUES (?, ?)",
+            (version, description),
+        )
+        await self._conn.commit()
+        logger.info("Applied schema migration v%d: %s", version, description)
 
     async def close(self) -> None:
         """Close database connection."""

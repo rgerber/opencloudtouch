@@ -16,6 +16,9 @@ interface DeviceAPIResponse {
   firmware_version: string;
   schema_version?: string;
   last_seen: string;
+  setup_status: string;
+  ssh_permanent: boolean;
+  setup_completed_at: string | null;
 }
 
 // Frontend Device interface (matches DeviceSwiper.tsx)
@@ -25,6 +28,9 @@ export interface Device {
   model?: string;
   firmware?: string;
   ip?: string;
+  setup_status?: string;
+  ssh_permanent?: boolean;
+  setup_completed_at?: string | null;
   capabilities?: {
     airplay?: boolean;
   };
@@ -48,6 +54,9 @@ function mapDeviceFromAPI(apiDevice: DeviceAPIResponse): Device {
     model: apiDevice.model, // Backend already returns 'model'
     ip: apiDevice.ip, // Backend already returns 'ip'
     firmware: apiDevice.firmware_version,
+    setup_status: apiDevice.setup_status,
+    ssh_permanent: apiDevice.ssh_permanent,
+    setup_completed_at: apiDevice.setup_completed_at,
   };
 }
 

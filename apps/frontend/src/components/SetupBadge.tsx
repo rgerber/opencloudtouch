@@ -2,21 +2,25 @@
  * Setup Badge Component
  *
  * Visual indicator showing device setup status on device cards.
- * Fetches live setup status from the API so it properly reflects
- * configured/unconfigured state without relying on the device list.
+ * Reads setup_status directly from the Device object (persisted in DB).
  * Click navigates to setup wizard for that device.
  */
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { getSetupStatus } from "../api/setup";
 import "./SetupBadge.css";
 
 interface SetupBadgeProps {
   deviceId: string;
-  setupStatus?: "unconfigured" | "configured" | "pending" | "in_progress" | "failed";
+  setupStatus?: string;
 }
 
-type DisplayStatus = "unknown" | "unconfigured" | "configured" | "pending" | "failed";
+type DisplayStatus =
+  | "unknown"
+  | "unconfigured"
+  | "configured"
+  | "pending"
+  | "failed"
+  | "outdated"
+  | "offline";
 
 const STATUS_CONFIG: Record<DisplayStatus, { cls: string; icon: string; title: string }> = {
   unknown: {
@@ -44,37 +48,29 @@ const STATUS_CONFIG: Record<DisplayStatus, { cls: string; icon: string; title: s
     icon: "⚠️",
     title: "Setup fehlgeschlagen - Klicken zum Wiederholen",
   },
+  outdated: {
+    cls: "setup-badge badge-outdated",
+    icon: "⚠️",
+    title: "Gerät zeigt auf alte OCT-Instanz - Klicken zum Aktualisieren",
+  },
+  offline: {
+    cls: "setup-badge badge-offline",
+    icon: "⚙️",
+    title: "Gerät nicht erreichbar",
+  },
 };
+
+const VALID_STATUSES = new Set<string>(Object.keys(STATUS_CONFIG));
 
 export default function SetupBadge({ deviceId, setupStatus }: Readonly<SetupBadgeProps>) {
   const navigate = useNavigate();
-
-  const { data: progress } = useQuery({
-    queryKey: ["setup-status", deviceId],
-    queryFn: () => getSetupStatus(deviceId),
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
 
   const handleClick = () => {
     navigate(`/setup-wizard?deviceId=${deviceId}`);
   };
 
-  // Prop takes precedence (e.g. during active wizard), else use fetched status.
-  // progress === undefined means still loading; progress === null means no record.
-  let displayStatus: DisplayStatus;
-  if (setupStatus !== undefined) {
-    displayStatus = setupStatus === "in_progress" ? "pending" : (setupStatus as DisplayStatus);
-  } else if (progress?.status === "configured") {
-    displayStatus = "configured";
-  } else if (progress?.status === "pending") {
-    displayStatus = "pending";
-  } else if (progress?.status === "failed" || progress?.status === "unconfigured") {
-    displayStatus = progress.status as DisplayStatus;
-  } else {
-    // null (no record) or still loading → neutral gray gear
-    displayStatus = "unknown";
-  }
+  const displayStatus: DisplayStatus =
+    setupStatus && VALID_STATUSES.has(setupStatus) ? (setupStatus as DisplayStatus) : "unknown";
 
   const { cls, icon, title } = STATUS_CONFIG[displayStatus];
 
