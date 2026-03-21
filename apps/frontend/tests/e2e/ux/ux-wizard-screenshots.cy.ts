@@ -253,11 +253,9 @@ function setupWizardMocks() {
   }).as("rebootDevice");
 }
 
-/** Navigate from mode-selection to USB Prep (Step 1 of manual mode) */
+/** Wait for wizard to be ready at Step 1 (mode selector was removed; wizard starts directly) */
 function selectManualMode() {
   cy.get(".setup-wizard-page-v2", { timeout: 8000 }).should("exist");
-  cy.get(".mode-selector-container", { timeout: 8000 }).should("exist");
-      cy.get(".mode-manual").first().click({ force: true });
   cy.wait(400);
 }
 
@@ -316,37 +314,18 @@ describe("UX Screenshots — Setup Wizard (Vollständiger Durchlauf)", () => {
   });
 
   // ===========================================================================
-  // SCHRITT 0: Modus-Auswahl
+  // SCHRITT 0: Wizard-Start
   // ===========================================================================
 
-  describe("Schritt 0 — Modus-Auswahl", () => {
-    it("wiz_00a — Modus-Auswahl: Mit Gerät (Gerät vorab selektiert)", () => {
+  describe("Schritt 0 — Wizard-Start", () => {
+    it("wiz_00a — Wizard-Start: Mit Gerät vorselektiert (Step 1)", () => {
       cy.visit(`/setup-wizard?deviceId=${DEVICE.device_id}`);
       cy.wait("@getDevices");
-      cy.get(".mode-selector-container", { timeout: 8000 }).should("exist");
-      cy.get(".mode-guided").should("be.visible");
-      screenshotBoth("wiz_00a_mode-selection__device-preselected");
+      cy.get(".setup-wizard-page-v2", { timeout: 8000 }).should("exist");
+      screenshotBoth("wiz_00a_wizard-start__device-preselected");
     });
 
-    it("wiz_00b — Modus-Auswahl: Guided-Modus hervorgehoben", () => {
-      cy.visit(`/setup-wizard?deviceId=${DEVICE.device_id}`);
-      cy.wait("@getDevices");
-      cy.get(".mode-selector-container", { timeout: 8000 }).should("exist");
-      cy.get(".mode-guided").first().click({ force: true });
-      cy.wait(300);
-      screenshotBoth("wiz_00b_mode-selection__guided-selected");
-    });
-
-    it("wiz_00c — Modus-Auswahl: Manueller Modus hervorgehoben", () => {
-      cy.visit(`/setup-wizard?deviceId=${DEVICE.device_id}`);
-      cy.wait("@getDevices");
-      cy.get(".mode-selector-container", { timeout: 8000 }).should("exist");
-      cy.get(".mode-manual").first().click({ force: true });
-      cy.wait(300);
-      screenshotBoth("wiz_00c_mode-selection__manual-selected");
-    });
-
-    it("wiz_00d — Modus-Auswahl: Kein Gerät (EmptyState)", () => {
+    it("wiz_00d — Wizard: Kein Gerät vorhanden (EmptyState)", () => {
       cy.intercept("GET", "/api/devices", { body: [] }).as("getDevicesEmpty");
       cy.visit("/setup-wizard");
       cy.wait("@getDevicesEmpty");

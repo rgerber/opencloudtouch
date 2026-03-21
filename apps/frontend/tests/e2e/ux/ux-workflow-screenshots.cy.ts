@@ -687,48 +687,11 @@ describe("UX Screenshots â€” App-Workflow Dokumentation", () => {
   // ===========================================================================
 
   describe("04 â€” Setup Wizard", () => {
-    /**
-     * Helper: wait for wizard page to be fully rendered with devices.
-     * SetupWizard renders immediately once AppRouter finishes loading.
-     * With v7_startTransition the initial route render may be deferred â€”
-     * wait for .setup-wizard-page-v2 first, then for the mode selector.
-     */
-    const waitForWizardModeSelector = (timeout = 10000) => {
-      cy.get(".setup-wizard-page-v2", { timeout }).should("exist");
-      cy.get(".mode-selector-container", { timeout }).should("exist");
-      cy.get(".mode-guided", { timeout }).should("be.visible");
-    };
-
-    it("04a â€” Modus-Auswahl: Mit GerÃ¤t verfÃ¼gbar", () => {
-      cy.visit("/setup-wizard");
-      cy.wait("@getDevices");
-      waitForWizardModeSelector();
-      screenshotBoth("04a_wizard_mode-selection__with-device");
-    });
-
-    it("04b â€” Modus-Auswahl: GerÃ¤t vorab selektiert via URL", () => {
+    it("04a â€” Wizard: Start mit vorselektiertem GerÃ¤t (Step 1)", () => {
       cy.visit(`/setup-wizard?deviceId=${DEVICE_ID_1}`);
       cy.wait("@getDevices");
-      waitForWizardModeSelector();
-      screenshotBoth("04b_wizard_mode-selection__device-preselected");
-    });
-
-    it("04c â€” Manueller Modus: Schritt 1 (USB)", () => {
-      cy.visit(`/setup-wizard?deviceId=${DEVICE_ID_1}`);
-      cy.wait("@getDevices");
-      waitForWizardModeSelector();
-      cy.get(".mode-manual").first().click();
-      cy.wait(600);
-      screenshotBoth("04c_wizard_manual-mode__step-1-usb");
-    });
-
-    it("04d â€” Geleiteter Modus: Schritt 1", () => {
-      cy.visit(`/setup-wizard?deviceId=${DEVICE_ID_1}`);
-      cy.wait("@getDevices");
-      waitForWizardModeSelector();
-      cy.get(".mode-guided").first().click();
-      cy.wait(600);
-      screenshotBoth("04d_wizard_guided-mode__step-1");
+      cy.get(".setup-wizard-page-v2", { timeout: 10000 }).should("exist");
+      screenshotBoth("04a_wizard_start__device-preselected");
     });
 
     it("04e â€” Wizard: Kein GerÃ¤t vorhanden (EmptyState)", () => {
@@ -739,12 +702,12 @@ describe("UX Screenshots â€” App-Workflow Dokumentation", () => {
       screenshotBoth("04e_wizard_empty-state__no-devices");
     });
 
-    it("04f â€” Mobile (375Ã—812): Modus-Auswahl", () => {
+    it("04f â€” Mobile (375x812): Wizard Step 1", () => {
       cy.viewport(375, 812);
-      cy.visit("/setup-wizard");
+      cy.visit(`/setup-wizard?deviceId=${DEVICE_ID_1}`);
       cy.wait("@getDevices");
-      waitForWizardModeSelector();
-      screenshotBoth("04f_wizard_mobile-375px__mode-selection");
+      cy.get(".setup-wizard-page-v2", { timeout: 10000 }).should("exist");
+      screenshotBoth("04f_wizard_mobile-375px__step-1");
     });
   });
 

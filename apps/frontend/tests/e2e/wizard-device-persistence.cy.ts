@@ -93,16 +93,14 @@ describe('Wizard Device Persistence', () => {
     // Click setup button
     cy.get('[data-test="setup-button"]').click();
 
-    // Wizard starts in mode-selection screen; click Manuell to enter manual mode
-    // (DeviceInfoHeader is only rendered when mode !== "select")
-    // Verify correct URL, then reload to bypass v7_startTransition SPA deferred rendering
+    // Wizard starts directly at Step 1 (mode selector was removed)
+    // DeviceInfoHeader is rendered immediately with selectedDevice
     cy.url().should('include', '/setup-wizard?deviceId=DEVICE_KITCHEN');
     cy.reload();
     cy.wait('@getDevices');
-    cy.get('.mode-card.mode-manual', { timeout: 10000 }).click({ force: true });
 
     // Header must now show the correct device
-    cy.get('.device-info-header').should('contain', 'Küche');
+    cy.get('.device-info-header', { timeout: 10000 }).should('contain', 'Küche');
     cy.get('.device-info-header').should('contain', 'SoundTouch 10');
     cy.get('.device-info-header').should('contain', '192.168.1.84');
   });
@@ -129,12 +127,12 @@ describe('Wizard Device Persistence', () => {
     // Start wizard
     cy.get('[data-test="setup-button"]').click();
 
-    // Manual mode: Step 1 (USB Preparation) requires USB-ready checkbox before Weiter
+    // Wizard starts directly at Step 1 (mode selector was removed)
     // Verify URL + reload to bypass v7_startTransition SPA deferred rendering
     cy.url().should('include', '/setup-wizard?deviceId=DEVICE_KITCHEN');
     cy.reload();
     cy.wait('@getDevices');
-    cy.get('.mode-card.mode-manual', { timeout: 10000 }).click({ force: true });
+    cy.get('.setup-wizard-page-v2', { timeout: 8000 }).should('exist');
 
     // Check the "USB-Stick ist bereit" checkbox (last checkbox in Step 1)
     // to enable the Weiter button
@@ -165,9 +163,7 @@ describe('Wizard Device Persistence', () => {
     cy.url().should('include', '/setup-wizard?deviceId=DEVICE_BEDROOM');
     cy.reload();
     cy.wait('@getDevices');
-
-    // Select Manual Mode
-    cy.get('.mode-card.mode-manual', { timeout: 10000 }).click({ force: true });
+    cy.get('.setup-wizard-page-v2', { timeout: 8000 }).should('exist');
 
     // Click back button on first step
     cy.contains('button', 'Zurück').click({ force: true });
@@ -193,13 +189,13 @@ describe('Wizard Device Persistence', () => {
 
     cy.get('[data-test="device-swiper"]').should('contain', 'Küche');
 
-    // Start wizard – DeviceInfoHeader only visible after mode selection
+    // Start wizard – DeviceInfoHeader visible immediately (mode selector was removed)
     cy.get('[data-test="setup-button"]').click();
     // Reload to bypass v7_startTransition SPA deferred rendering
     cy.url().should('include', '/setup-wizard?deviceId=DEVICE_KITCHEN');
     cy.reload();
     cy.wait('@getDevices');
-    cy.get('.mode-card.mode-manual', { timeout: 10000 }).click({ force: true });
+    cy.get('.setup-wizard-page-v2', { timeout: 8000 }).should('exist');
 
     // Wizard header must show the device selected via arrow button, not the URL default
     cy.get('.device-info-header').should('contain', 'Küche');
@@ -221,11 +217,9 @@ describe('Wizard Device Persistence', () => {
 
     // Wait for devices to load
     cy.wait('@getDevices');
+    cy.get('.setup-wizard-page-v2', { timeout: 8000 }).should('exist');
 
-    // Wizard starts in mode-selection; click Manuell to enter manual mode
-    cy.get('.mode-card.mode-manual', { timeout: 15000 }).click({ force: true });
-
-    // Header must show the correct device after mode selection
+    // Header must show the correct device (mode selector was removed, wizard starts directly)
     cy.get('.device-info-header').should('contain', 'Küche');
     cy.get('.device-info-header').should('contain', '192.168.1.84');
 
@@ -243,9 +237,7 @@ describe('Wizard Device Persistence', () => {
     // Visit wizard with non-existent device
     cy.visit('/setup-wizard?deviceId=INVALID_DEVICE');
     cy.wait('@getDevices');
-
-    // Wizard starts in mode-selection screen; enter manual mode
-    cy.get('.mode-card.mode-manual', { timeout: 15000 }).click({ force: true });
+    cy.get('.setup-wizard-page-v2', { timeout: 8000 }).should('exist');
 
     // Should fall back to first device (TV)
     cy.get('.device-info-header').should('contain', 'TV');

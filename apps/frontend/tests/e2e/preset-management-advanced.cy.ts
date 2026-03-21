@@ -138,8 +138,8 @@ describe("Preset Management Advanced", () => {
       // Reload to see preset
       cy.reload();
       waitForPresetsReady();
-      cy.contains(".presets-grid .preset-play", stationA.name, { timeout: 10000 }).should("exist");
-      cy.get(".presets-grid .preset-play").eq(0).should("contain", stationA.name);
+      cy.contains(".presets-grid [data-testid^='preset-play-']", stationA.name, { timeout: 10000 }).should("exist");
+      cy.get(".presets-grid [data-testid^='preset-play-']").eq(0).should("contain", stationA.name);
 
       // Clear preset using data-testid
       cy.get('[data-testid="preset-clear-2"]').click({ force: true });
