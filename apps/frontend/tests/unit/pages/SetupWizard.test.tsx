@@ -109,6 +109,12 @@ vi.mock("../../../src/api/wizard", () => ({
     strategy: "bmx_and_hosts",
     message: "No proxy detected",
   }),
+  completeWizard: vi.fn().mockResolvedValue({
+    success: true,
+    device_id: "ST30-001",
+    setup_status: "configured",
+    message: "Setup abgeschlossen.",
+  }),
 }));
 
 // --- Test fixtures ---

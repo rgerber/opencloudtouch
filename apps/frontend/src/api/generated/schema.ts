@@ -1803,6 +1803,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/setup/wizard/complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Wizard Complete
+     * @description Mark wizard setup as complete for a device.
+     *
+     *     Updates the device's setup_status to 'configured' in the database.
+     *     Called by the frontend when the user finishes the wizard.
+     */
+    post: operations["wizard_complete_api_setup_wizard_complete_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/setup/wizard/verify-redirect": {
     parameters: {
       query?: never;
@@ -2436,10 +2459,6 @@ export interface components {
       msg: string;
       /** Error Type */
       type: string;
-      /** Input */
-      input?: unknown;
-      /** Context */
-      ctx?: Record<string, never>;
     };
     /**
      * VerifyRedirectRequest
@@ -2477,6 +2496,31 @@ export interface components {
        * @default false
        */
       matches_expected: boolean;
+      /** Message */
+      message: string;
+    };
+    /**
+     * WizardCompleteRequest
+     * @description Request to mark wizard setup as complete for a device.
+     */
+    WizardCompleteRequest: {
+      /**
+       * Device Id
+       * @description Device ID
+       */
+      device_id: string;
+    };
+    /**
+     * WizardCompleteResponse
+     * @description Response after marking wizard setup as complete.
+     */
+    WizardCompleteResponse: {
+      /** Success */
+      success: boolean;
+      /** Device Id */
+      device_id: string;
+      /** Setup Status */
+      setup_status: string;
       /** Message */
       message: string;
     };
@@ -4713,6 +4757,39 @@ export interface operations {
         };
         content: {
           "application/json": Record<string, never>;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  wizard_complete_api_setup_wizard_complete_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WizardCompleteRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WizardCompleteResponse"];
         };
       };
       /** @description Validation Error */

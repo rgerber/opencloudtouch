@@ -267,6 +267,21 @@ class ListBackupsResponse(BaseModel):
     hosts_backups: list[str] = Field(default_factory=list)
 
 
+class WizardCompleteRequest(BaseModel):
+    """Request to mark wizard setup as complete for a device."""
+
+    device_id: str = Field(..., description="Device ID")
+
+
+class WizardCompleteResponse(BaseModel):
+    """Response after marking wizard setup as complete."""
+
+    success: bool
+    device_id: str
+    setup_status: str
+    message: str
+
+
 class DetectStrategyResponse(BaseModel):
     """Response with detected setup strategy."""
 

@@ -37,6 +37,17 @@ export interface DetectStrategyResponse {
   message: string;
 }
 
+export interface WizardCompleteRequest {
+  device_id: string;
+}
+
+export interface WizardCompleteResponse {
+  success: boolean;
+  device_id: string;
+  setup_status: string;
+  message: string;
+}
+
 export interface RebootDeviceResponse {
   success: boolean;
   message: string;
@@ -225,6 +236,26 @@ export async function enablePermanentSsh(
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`Enable permanent SSH failed: ${error}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Mark wizard setup as complete for a device
+ */
+export async function completeWizard(
+  request: WizardCompleteRequest
+): Promise<WizardCompleteResponse> {
+  const response = await fetch(`${API_BASE}/api/setup/wizard/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Complete wizard failed: ${error}`);
   }
 
   return response.json();

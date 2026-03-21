@@ -8,7 +8,12 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Device } from "../api/devices";
-import { DetectStrategyResponse, getServerInfo, enablePermanentSsh } from "../api/wizard";
+import {
+  DetectStrategyResponse,
+  getServerInfo,
+  enablePermanentSsh,
+  completeWizard,
+} from "../api/wizard";
 import DeviceInfoHeader from "../components/wizard/DeviceInfoHeader";
 import ProgressTracker, { WizardStep } from "../components/wizard/ProgressTracker";
 import Step2USBPreparation from "../components/wizard/Step2USBPreparation";
@@ -171,9 +176,17 @@ export default function SetupWizard({ devices, isLoading = false }: SetupWizardP
     handleNext();
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     // Mark final step as complete
     completeCurrentStep();
+    // Persist setup_status = "configured" in backend DB
+    if (selectedDevice) {
+      try {
+        await completeWizard({ device_id: selectedDevice.device_id });
+      } catch (err) {
+        console.error("Failed to mark setup as complete:", err);
+      }
+    }
     // Navigate to dashboard after brief delay
     setTimeout(() => {
       navigate("/");

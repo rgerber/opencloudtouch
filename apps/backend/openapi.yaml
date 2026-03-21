@@ -2189,6 +2189,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/setup/wizard/complete:
+    post:
+      tags:
+      - Setup Wizard
+      summary: Wizard Complete
+      description: 'Mark wizard setup as complete for a device.
+
+
+        Updates the device''s setup_status to ''configured'' in the database.
+
+        Called by the frontend when the user finishes the wizard.'
+      operationId: wizard_complete_api_setup_wizard_complete_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WizardCompleteRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WizardCompleteResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/setup/wizard/verify-redirect:
     post:
       tags:
@@ -3052,11 +3083,6 @@ components:
         type:
           type: string
           title: Error Type
-        input:
-          title: Input
-        ctx:
-          type: object
-          title: Context
       type: object
       required:
       - loc
@@ -3111,6 +3137,39 @@ components:
       - message
       title: VerifyRedirectResponse
       description: Response with domain redirect verification result.
+    WizardCompleteRequest:
+      properties:
+        device_id:
+          type: string
+          title: Device Id
+          description: Device ID
+      type: object
+      required:
+      - device_id
+      title: WizardCompleteRequest
+      description: Request to mark wizard setup as complete for a device.
+    WizardCompleteResponse:
+      properties:
+        success:
+          type: boolean
+          title: Success
+        device_id:
+          type: string
+          title: Device Id
+        setup_status:
+          type: string
+          title: Setup Status
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - success
+      - device_id
+      - setup_status
+      - message
+      title: WizardCompleteResponse
+      description: Response after marking wizard setup as complete.
     ZoneMemberInfo:
       properties:
         device_id:

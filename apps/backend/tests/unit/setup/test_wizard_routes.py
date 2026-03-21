@@ -666,3 +666,41 @@ class TestWizardDetectStrategy:
         body = response.json()
         assert body["proxy_available"] is False
         assert body["strategy"] == "bmx_and_hosts"
+
+
+class TestWizardComplete:
+    """POST /api/setup/wizard/complete"""
+
+    @pytest.fixture
+    def client_with_repo(self, wizard_app):
+        """Client with mock device_repo on app.state."""
+        mock_repo = AsyncMock()
+        wizard_app.state.device_repo = mock_repo
+        return TestClient(wizard_app, raise_server_exceptions=False), mock_repo
+
+    def test_complete_sets_configured(self, client_with_repo):
+        client, mock_repo = client_with_repo
+        response = client.post(
+            "/api/setup/wizard/complete",
+            json={"device_id": "ABC123"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["success"] is True
+        assert body["device_id"] == "ABC123"
+        assert body["setup_status"] == "configured"
+
+        mock_repo.update_setup_status.assert_awaited_once()
+        call_kwargs = mock_repo.update_setup_status.call_args.kwargs
+        assert call_kwargs["device_id"] == "ABC123"
+        assert call_kwargs["setup_status"] == "configured"
+        assert call_kwargs["setup_completed_at"] is not None
+
+    def test_complete_repo_failure_returns_500(self, client_with_repo):
+        client, mock_repo = client_with_repo
+        mock_repo.update_setup_status.side_effect = Exception("DB write failed")
+        response = client.post(
+            "/api/setup/wizard/complete",
+            json={"device_id": "ABC123"},
+        )
+        assert response.status_code == 500

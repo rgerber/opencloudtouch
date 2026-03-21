@@ -36,6 +36,8 @@ from opencloudtouch.setup.api_models import (
     RestoreResponse,
     VerifyRedirectRequest,
     VerifyRedirectResponse,
+    WizardCompleteRequest,
+    WizardCompleteResponse,
 )
 from opencloudtouch.setup.backup_service import SoundTouchBackupService
 from opencloudtouch.setup.config_service import SoundTouchConfigService
@@ -370,6 +372,39 @@ async def wizard_reboot_device(request: ConnectivityCheckRequest) -> Dict[str, A
         )
     finally:
         await ssh_client.close()
+
+
+@wizard_router.post("/wizard/complete", response_model=WizardCompleteResponse)
+async def wizard_complete(request: WizardCompleteRequest, http_request: Request):
+    """Mark wizard setup as complete for a device.
+
+    Updates the device's setup_status to 'configured' in the database.
+    Called by the frontend when the user finishes the wizard.
+    """
+    from datetime import UTC, datetime
+
+    logger.info(f"Marking wizard setup complete for device {request.device_id}")
+
+    device_repo = http_request.app.state.device_repo
+    try:
+        await device_repo.update_setup_status(
+            device_id=request.device_id,
+            setup_status="configured",
+            setup_completed_at=datetime.now(UTC),
+        )
+    except Exception as e:
+        logger.exception(f"Failed to update setup status for {request.device_id}")
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update setup status: {e}",
+        )
+
+    return WizardCompleteResponse(
+        success=True,
+        device_id=request.device_id,
+        setup_status="configured",
+        message="Setup abgeschlossen. Gerät ist konfiguriert.",
+    )
 
 
 @wizard_router.post("/wizard/verify-redirect", response_model=VerifyRedirectResponse)
