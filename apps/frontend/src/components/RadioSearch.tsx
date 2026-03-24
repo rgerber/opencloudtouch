@@ -46,11 +46,17 @@ function getApiBaseUrl(): string {
 }
 
 type SearchType = "name" | "country" | "tag";
+type RadioProviderType = "radiobrowser" | "tunein";
 
 const SEARCH_TYPES: { value: SearchType; label: string }[] = [
   { value: "name", label: "Name" },
   { value: "country", label: "Land" },
   { value: "tag", label: "Genre" },
+];
+
+const PROVIDERS: { value: RadioProviderType; label: string }[] = [
+  { value: "radiobrowser", label: "RadioBrowser" },
+  { value: "tunein", label: "TuneIn" },
 ];
 
 const SEARCH_PLACEHOLDERS: Record<SearchType, string> = {
@@ -108,6 +114,7 @@ export default function RadioSearch({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<SearchType>("name");
+  const [radioProvider, setRadioProvider] = useState<RadioProviderType>("radiobrowser");
   const [detailUuid, setDetailUuid] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -154,7 +161,7 @@ export default function RadioSearch({
       try {
         const baseUrl = getApiBaseUrl();
         const response = await fetch(
-          `${baseUrl}/api/radio/search?q=${encodeURIComponent(searchQuery)}&search_type=${searchType}&limit=10`,
+          `${baseUrl}/api/radio/search?q=${encodeURIComponent(searchQuery)}&search_type=${searchType}&limit=10&provider=${radioProvider}`,
           { signal: controller.signal }
         );
 
@@ -215,6 +222,7 @@ export default function RadioSearch({
         {detailUuid ? (
           <StationDetail
             stationUuid={detailUuid}
+            provider={radioProvider}
             onBack={() => setDetailUuid(null)}
             onSelect={(s) =>
               handleSelect({
@@ -258,6 +266,20 @@ export default function RadioSearch({
                   }}
                 >
                   {t.label}
+                </button>
+              ))}
+            </div>
+            <div className="search-type-row">
+              {PROVIDERS.map((p) => (
+                <button
+                  key={p.value}
+                  className={`search-type-chip${radioProvider === p.value ? " active" : ""}`}
+                  onClick={() => {
+                    setRadioProvider(p.value);
+                    if (query.trim().length >= 2) handleSearch(query);
+                  }}
+                >
+                  {p.label}
                 </button>
               ))}
             </div>

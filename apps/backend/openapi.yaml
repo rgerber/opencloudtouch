@@ -546,7 +546,9 @@ paths:
 
         - **search_type**: Type of search - name, country, or tag (default: name)
 
-        - **limit**: Maximum results (1-100, default: 10)'
+        - **limit**: Maximum results (1-100, default: 10)
+
+        - **provider**: Radio provider - radiobrowser or tunein (default: radiobrowser)'
       operationId: search_stations_api_radio_search_get
       parameters:
       - name: q
@@ -577,6 +579,14 @@ paths:
           default: 10
           title: Limit
         description: Maximum number of results
+      - name: provider
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ProviderType'
+          description: 'Radio provider: radiobrowser or tunein'
+          default: radiobrowser
+        description: 'Radio provider: radiobrowser or tunein'
       responses:
         '200':
           description: Successful Response
@@ -598,7 +608,9 @@ paths:
       description: 'Get radio station detail by UUID.
 
 
-        - **uuid**: Station UUID'
+        - **uuid**: Station UUID
+
+        - **provider**: Radio provider - radiobrowser or tunein (default: radiobrowser)'
       operationId: get_station_detail_api_radio_station__uuid__get
       parameters:
       - name: uuid
@@ -607,6 +619,14 @@ paths:
         schema:
           type: string
           title: Uuid
+      - name: provider
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ProviderType'
+          description: 'Radio provider: radiobrowser or tunein'
+          default: radiobrowser
+        description: 'Radio provider: radiobrowser or tunein'
       responses:
         '200':
           description: Successful Response
@@ -2936,6 +2956,13 @@ components:
       - station_url
       title: PresetSetRequest
       description: Request model for setting a preset.
+    ProviderType:
+      type: string
+      enum:
+      - radiobrowser
+      - tunein
+      title: ProviderType
+      description: Radio provider enum.
     RadioSearchResponse:
       properties:
         stations:
@@ -3083,6 +3110,11 @@ components:
         type:
           type: string
           title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
       type: object
       required:
       - loc

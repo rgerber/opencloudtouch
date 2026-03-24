@@ -17,6 +17,7 @@ export interface StationDetailData {
 
 interface StationDetailProps {
   stationUuid: string;
+  provider?: string;
   onBack: () => void;
   onSelect: (station: StationDetailData) => void;
 }
@@ -34,7 +35,12 @@ function getApiBaseUrl(): string {
   return API_BASE_URL;
 }
 
-export default function StationDetail({ stationUuid, onBack, onSelect }: StationDetailProps) {
+export default function StationDetail({
+  stationUuid,
+  provider,
+  onBack,
+  onSelect,
+}: StationDetailProps) {
   const [station, setStation] = useState<StationDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,9 +53,13 @@ export default function StationDetail({ stationUuid, onBack, onSelect }: Station
       setError(null);
       try {
         const baseUrl = getApiBaseUrl();
-        const res = await fetch(`${baseUrl}/api/radio/station/${encodeURIComponent(stationUuid)}`, {
-          signal: controller.signal,
-        });
+        const providerParam = provider ? `?provider=${provider}` : "";
+        const res = await fetch(
+          `${baseUrl}/api/radio/station/${encodeURIComponent(stationUuid)}${providerParam}`,
+          {
+            signal: controller.signal,
+          }
+        );
         if (!res.ok) {
           setError("Station konnte nicht geladen werden.");
           return;
@@ -66,7 +76,7 @@ export default function StationDetail({ stationUuid, onBack, onSelect }: Station
 
     fetchDetail();
     return () => controller.abort();
-  }, [stationUuid]);
+  }, [stationUuid, provider]);
 
   if (loading) {
     return (

@@ -4,14 +4,13 @@ Tests for Radio API endpoints
 TDD RED Phase: These tests will fail until FastAPI endpoints are implemented.
 """
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 from httpx import ASGITransport
 
 from opencloudtouch.main import app
-from opencloudtouch.radio.api.routes import get_radio_provider
 from opencloudtouch.radio.models import RadioStation
 from opencloudtouch.radio.providers.radiobrowser import RadioBrowserError
 
@@ -24,8 +23,13 @@ def client():
 
 @pytest.fixture
 def mock_adapter():
-    """Mock RadioBrowser adapter."""
-    return AsyncMock()
+    """Mock radio adapter, patched into routes via get_radio_adapter."""
+    adapter = AsyncMock()
+    with patch(
+        "opencloudtouch.radio.api.routes.get_radio_adapter",
+        return_value=adapter,
+    ):
+        yield adapter
 
 
 @pytest.fixture
@@ -69,57 +73,45 @@ class TestRadioSearchEndpoint:
         """Test search by station name."""
         mock_adapter.search_by_name.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get(
-                "/api/radio/search", params={"q": "test", "search_type": "name"}
-            )
+        response = client.get(
+            "/api/radio/search", params={"q": "test", "search_type": "name"}
+        )
 
-            assert response.status_code == 200
-            data = response.json()
+        assert response.status_code == 200
+        data = response.json()
 
-            assert "stations" in data
-            assert len(data["stations"]) == 2
-            assert data["stations"][0]["name"] == "Test Radio 1"
-            assert data["stations"][0]["uuid"] == "test-uuid-1"
-        finally:
-            app.dependency_overrides.clear()
+        assert "stations" in data
+        assert len(data["stations"]) == 2
+        assert data["stations"][0]["name"] == "Test Radio 1"
+        assert data["stations"][0]["uuid"] == "test-uuid-1"
 
     def test_search_by_country(self, client, mock_adapter, mock_radio_stations):
         """Test search by country."""
         mock_adapter.search_by_country.return_value = [mock_radio_stations[0]]
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get(
-                "/api/radio/search", params={"q": "Germany", "search_type": "country"}
-            )
+        response = client.get(
+            "/api/radio/search", params={"q": "Germany", "search_type": "country"}
+        )
 
-            assert response.status_code == 200
-            data = response.json()
+        assert response.status_code == 200
+        data = response.json()
 
-            assert len(data["stations"]) == 1
-            assert data["stations"][0]["country"] == "Germany"
-        finally:
-            app.dependency_overrides.clear()
+        assert len(data["stations"]) == 1
+        assert data["stations"][0]["country"] == "Germany"
 
     def test_search_by_tag(self, client, mock_adapter, mock_radio_stations):
         """Test search by tag."""
         mock_adapter.search_by_tag.return_value = [mock_radio_stations[1]]
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get(
-                "/api/radio/search", params={"q": "jazz", "search_type": "tag"}
-            )
+        response = client.get(
+            "/api/radio/search", params={"q": "jazz", "search_type": "tag"}
+        )
 
-            assert response.status_code == 200
-            data = response.json()
+        assert response.status_code == 200
+        data = response.json()
 
-            assert len(data["stations"]) == 1
-            assert "jazz" in data["stations"][0]["tags"]
-        finally:
-            app.dependency_overrides.clear()
+        assert len(data["stations"]) == 1
+        assert "jazz" in data["stations"][0]["tags"]
 
     def test_search_default_type_is_name(
         self, client, mock_adapter, mock_radio_stations
@@ -127,42 +119,28 @@ class TestRadioSearchEndpoint:
         """Test that default search type is 'name'."""
         mock_adapter.search_by_name.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "test"})
+        response = client.get("/api/radio/search", params={"q": "test"})
 
-            assert response.status_code == 200
-            mock_adapter.search_by_name.assert_called_once()
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        mock_adapter.search_by_name.assert_called_once()
 
     def test_search_limit_parameter(self, client, mock_adapter, mock_radio_stations):
         """Test that limit parameter is passed correctly."""
         mock_adapter.search_by_name.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get(
-                "/api/radio/search", params={"q": "test", "limit": 25}
-            )
+        response = client.get("/api/radio/search", params={"q": "test", "limit": 25})
 
-            assert response.status_code == 200
-            mock_adapter.search_by_name.assert_called_once_with("test", limit=25)
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        mock_adapter.search_by_name.assert_called_once_with("test", limit=25)
 
     def test_search_default_limit(self, client, mock_adapter, mock_radio_stations):
         """Test default limit is 10."""
         mock_adapter.search_by_name.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "test"})
+        response = client.get("/api/radio/search", params={"q": "test"})
 
-            assert response.status_code == 200
-            mock_adapter.search_by_name.assert_called_once_with("test", limit=10)
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        mock_adapter.search_by_name.assert_called_once_with("test", limit=10)
 
     def test_search_missing_query_parameter(self, client):
         """Test that missing 'q' parameter returns 422."""
@@ -201,52 +179,40 @@ class TestRadioSearchEndpoint:
         """Test search with no results."""
         mock_adapter.search_by_name.return_value = []
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "nonexistent"})
+        response = client.get("/api/radio/search", params={"q": "nonexistent"})
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["stations"] == []
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        data = response.json()
+        assert data["stations"] == []
 
     def test_search_adapter_error_handling(self, client, mock_adapter):
         """Test that adapter errors are handled gracefully."""
         mock_adapter.search_by_name.side_effect = RadioBrowserError("API error")
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "test"})
+        response = client.get("/api/radio/search", params={"q": "test"})
 
-            assert response.status_code == 500
-            data = response.json()
-            assert "detail" in data
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
 
     def test_search_response_format(self, client, mock_adapter, mock_radio_stations):
         """Test response format structure."""
         mock_adapter.search_by_name.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "test"})
+        response = client.get("/api/radio/search", params={"q": "test"})
 
-            assert response.status_code == 200
-            data = response.json()
+        assert response.status_code == 200
+        data = response.json()
 
-            # Check structure
-            assert "stations" in data
-            assert isinstance(data["stations"], list)
+        # Check structure
+        assert "stations" in data
+        assert isinstance(data["stations"], list)
 
-            # Check station fields
-            station = data["stations"][0]
-            required_fields = ["uuid", "name", "url", "country", "codec"]
-            for field in required_fields:
-                assert field in station
-        finally:
-            app.dependency_overrides.clear()
+        # Check station fields
+        station = data["stations"][0]
+        required_fields = ["uuid", "name", "url", "country", "codec"]
+        for field in required_fields:
+            assert field in station
 
     def test_search_station_field_types(
         self, client, mock_adapter, mock_radio_stations
@@ -254,20 +220,16 @@ class TestRadioSearchEndpoint:
         """Test that response field types are correct."""
         mock_adapter.search_by_name.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "test"})
+        response = client.get("/api/radio/search", params={"q": "test"})
 
-            assert response.status_code == 200
-            data = response.json()
-            station = data["stations"][0]
+        assert response.status_code == 200
+        data = response.json()
+        station = data["stations"][0]
 
-            assert isinstance(station["uuid"], str)
-            assert isinstance(station["name"], str)
-            assert isinstance(station["url"], str)
-            assert isinstance(station["bitrate"], int)
-        finally:
-            app.dependency_overrides.clear()
+        assert isinstance(station["uuid"], str)
+        assert isinstance(station["name"], str)
+        assert isinstance(station["url"], str)
+        assert isinstance(station["bitrate"], int)
 
 
 class TestRadioStationDetailEndpoint:
@@ -285,17 +247,13 @@ class TestRadioStationDetailEndpoint:
         """Test getting station detail by UUID."""
         mock_adapter.get_station_by_uuid.return_value = mock_radio_stations[0]
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/station/test-uuid-1")
+        response = client.get("/api/radio/station/test-uuid-1")
 
-            assert response.status_code == 200
-            data = response.json()
+        assert response.status_code == 200
+        data = response.json()
 
-            assert data["uuid"] == "test-uuid-1"
-            assert data["name"] == "Test Radio 1"
-        finally:
-            app.dependency_overrides.clear()
+        assert data["uuid"] == "test-uuid-1"
+        assert data["name"] == "Test Radio 1"
 
     def test_get_station_not_found(self, client, mock_adapter):
         """Test getting non-existent station returns 404."""
@@ -303,13 +261,9 @@ class TestRadioStationDetailEndpoint:
             "Station not found"
         )
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/station/nonexistent")
+        response = client.get("/api/radio/station/nonexistent")
 
-            assert response.status_code in [404, 500]
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code in [404, 500]
 
 
 class TestRadioAPIErrorHandling:
@@ -327,14 +281,10 @@ class TestRadioAPIErrorHandling:
             "API timeout after 10s"
         )
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "test"})
+        response = client.get("/api/radio/search", params={"q": "test"})
 
-            assert response.status_code == 504
-            assert "timeout" in response.json()["detail"].lower()
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 504
+        assert "timeout" in response.json()["detail"].lower()
 
     def test_search_connection_error_returns_503(self, client, mock_adapter):
         """Test connection failure returns 503 Service Unavailable.
@@ -352,17 +302,13 @@ class TestRadioAPIErrorHandling:
             "Cannot connect to api.radio-browser.info"
         )
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "test"})
+        response = client.get("/api/radio/search", params={"q": "test"})
 
-            assert response.status_code == 503
-            assert (
-                "connect" in response.json()["detail"].lower()
-                or "unavailable" in response.json()["detail"].lower()
-            )
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 503
+        assert (
+            "connect" in response.json()["detail"].lower()
+            or "unavailable" in response.json()["detail"].lower()
+        )
 
     def test_station_detail_timeout_returns_504(self, client, mock_adapter):
         """Test station detail timeout handling.
@@ -377,14 +323,10 @@ class TestRadioAPIErrorHandling:
             "API timeout"
         )
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/station/test-uuid")
+        response = client.get("/api/radio/station/test-uuid")
 
-            # After fixing exception order: Timeout correctly returns 504
-            assert response.status_code == 504
-        finally:
-            app.dependency_overrides.clear()
+        # After fixing exception order: Timeout correctly returns 504
+        assert response.status_code == 504
 
     def test_station_detail_connection_error_returns_503(self, client, mock_adapter):
         """Test station detail connection failure handling.
@@ -399,14 +341,10 @@ class TestRadioAPIErrorHandling:
             "Network error"
         )
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/station/test-uuid")
+        response = client.get("/api/radio/station/test-uuid")
 
-            # After fixing exception order: Connection error correctly returns 503
-            assert response.status_code == 503
-        finally:
-            app.dependency_overrides.clear()
+        # After fixing exception order: Connection error correctly returns 503
+        assert response.status_code == 503
 
     def test_search_with_special_characters(
         self, client, mock_adapter, mock_radio_stations
@@ -418,17 +356,13 @@ class TestRadioAPIErrorHandling:
         """
         mock_adapter.search_by_name.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "Rock & Roll"})
+        response = client.get("/api/radio/search", params={"q": "Rock & Roll"})
 
-            assert response.status_code == 200
-            # Verify adapter received the unescaped query
-            mock_adapter.search_by_name.assert_called_once()
-            call_args = mock_adapter.search_by_name.call_args[0]
-            assert call_args[0] == "Rock & Roll"
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        # Verify adapter received the unescaped query
+        mock_adapter.search_by_name.assert_called_once()
+        call_args = mock_adapter.search_by_name.call_args[0]
+        assert call_args[0] == "Rock & Roll"
 
     def test_search_with_unicode_characters(
         self, client, mock_adapter, mock_radio_stations
@@ -440,13 +374,9 @@ class TestRadioAPIErrorHandling:
         """
         mock_adapter.search_by_name.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "Москва"})
+        response = client.get("/api/radio/search", params={"q": "Москва"})
 
-            assert response.status_code == 200
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
 
     # Note: test_station_detail_with_invalid_uuid_format removed
     # Reason: RadioBrowser API accepts any string as UUID, so "invalid format"
@@ -468,22 +398,18 @@ class TestRadioAPIIntegration:
         mock_adapter.search_by_name.return_value = mock_radio_stations
         mock_adapter.get_station_by_uuid.return_value = mock_radio_stations[0]
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            # 1. Search
-            response = client.get("/api/radio/search", params={"q": "test"})
-            assert response.status_code == 200
-            stations = response.json()["stations"]
-            assert len(stations) > 0
+        # 1. Search
+        response = client.get("/api/radio/search", params={"q": "test"})
+        assert response.status_code == 200
+        stations = response.json()["stations"]
+        assert len(stations) > 0
 
-            # 2. Get detail for first result
-            first_uuid = stations[0]["uuid"]
-            response = client.get(f"/api/radio/station/{first_uuid}")
-            assert response.status_code == 200
-            detail = response.json()
-            assert detail["uuid"] == first_uuid
-        finally:
-            app.dependency_overrides.clear()
+        # 2. Get detail for first result
+        first_uuid = stations[0]["uuid"]
+        response = client.get(f"/api/radio/station/{first_uuid}")
+        assert response.status_code == 200
+        detail = response.json()
+        assert detail["uuid"] == first_uuid
 
 
 class TestRadioSearchEdgeCases:
@@ -497,19 +423,15 @@ class TestRadioSearchEdgeCases:
         """
         mock_adapter.search_by_country.return_value = []
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get(
-                "/api/radio/search",
-                params={"q": "Antarctica", "search_type": "country"},
-            )
+        response = client.get(
+            "/api/radio/search",
+            params={"q": "Antarctica", "search_type": "country"},
+        )
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["stations"] == []
-            # Radio API returns {"stations": []} without total field
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        data = response.json()
+        assert data["stations"] == []
+        # Radio API returns {"stations": []} without total field
 
     def test_search_by_tag_special_characters(
         self, client, mock_adapter, mock_radio_stations
@@ -521,17 +443,13 @@ class TestRadioSearchEdgeCases:
         """
         mock_adapter.search_by_tag.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get(
-                "/api/radio/search", params={"q": "rock&roll", "search_type": "tag"}
-            )
+        response = client.get(
+            "/api/radio/search", params={"q": "rock&roll", "search_type": "tag"}
+        )
 
-            assert response.status_code == 200
-            # Verify adapter received correctly encoded query
-            mock_adapter.search_by_tag.assert_called_once()
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        # Verify adapter received correctly encoded query
+        mock_adapter.search_by_tag.assert_called_once()
 
     def test_search_by_country_umlauts(self, client, mock_adapter, mock_radio_stations):
         """Test search by country with German umlauts.
@@ -541,20 +459,16 @@ class TestRadioSearchEdgeCases:
         """
         mock_adapter.search_by_country.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get(
-                "/api/radio/search",
-                params={"q": "Österreich", "search_type": "country"},
-            )
+        response = client.get(
+            "/api/radio/search",
+            params={"q": "Österreich", "search_type": "country"},
+        )
 
-            assert response.status_code == 200
-            # Verify adapter was called with correct parameters
-            assert mock_adapter.search_by_country.called
-            call_args = mock_adapter.search_by_country.call_args
-            assert call_args[0][0] == "Österreich"  # First positional arg
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        # Verify adapter was called with correct parameters
+        assert mock_adapter.search_by_country.called
+        call_args = mock_adapter.search_by_country.call_args
+        assert call_args[0][0] == "Österreich"  # First positional arg
 
     def test_search_by_tag_case_insensitive(
         self, client, mock_adapter, mock_radio_stations
@@ -566,21 +480,17 @@ class TestRadioSearchEdgeCases:
         """
         mock_adapter.search_by_tag.return_value = mock_radio_stations
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            # Test uppercase
-            response = client.get(
-                "/api/radio/search", params={"q": "JAZZ", "search_type": "tag"}
-            )
-            assert response.status_code == 200
+        # Test uppercase
+        response = client.get(
+            "/api/radio/search", params={"q": "JAZZ", "search_type": "tag"}
+        )
+        assert response.status_code == 200
 
-            # RadioBrowser API handles case-sensitivity, not our endpoint
-            # Test just verifies request is passed through correctly
-            assert mock_adapter.search_by_tag.called
-            call_args = mock_adapter.search_by_tag.call_args
-            assert call_args[0][0] == "JAZZ"  # Verify uppercase passed through
-        finally:
-            app.dependency_overrides.clear()
+        # RadioBrowser API handles case-sensitivity, not our endpoint
+        # Test just verifies request is passed through correctly
+        assert mock_adapter.search_by_tag.called
+        call_args = mock_adapter.search_by_tag.call_args
+        assert call_args[0][0] == "JAZZ"  # Verify uppercase passed through
 
 
 class TestConcurrentRadioRequests:
@@ -599,34 +509,27 @@ class TestConcurrentRadioRequests:
         """
         mock_adapter.get_station_by_uuid.return_value = mock_radio_stations[0]
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            import asyncio
+        import asyncio
 
-            from httpx import AsyncClient
+        from httpx import AsyncClient
 
-            # Create 5 concurrent requests
-            async def fetch_station(station_uuid):
-                transport = ASGITransport(app=app)
-                async with AsyncClient(
-                    transport=transport, base_url="http://test"
-                ) as ac:
-                    response = await ac.get(f"/api/radio/station/{station_uuid}")
-                    return response
+        # Create 5 concurrent requests
+        async def fetch_station(station_uuid):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                response = await ac.get(f"/api/radio/station/{station_uuid}")
+                return response
 
-            tasks = [fetch_station("test-uuid-1") for _ in range(5)]
-            responses = await asyncio.gather(*tasks)
+        tasks = [fetch_station("test-uuid-1") for _ in range(5)]
+        responses = await asyncio.gather(*tasks)
 
-            # All should succeed
-            for response in responses:
-                assert response.status_code == 200
-                assert response.json()["uuid"] == "test-uuid-1"
+        # All should succeed
+        for response in responses:
+            assert response.status_code == 200
+            assert response.json()["uuid"] == "test-uuid-1"
 
-            # Adapter should be called 5 times (no caching)
-            assert mock_adapter.get_station_by_uuid.call_count == 5
-
-        finally:
-            app.dependency_overrides.clear()
+        # Adapter should be called 5 times (no caching)
+        assert mock_adapter.get_station_by_uuid.call_count == 5
 
     @pytest.mark.asyncio
     async def test_concurrent_search_requests_different_queries(
@@ -649,37 +552,30 @@ class TestConcurrentRadioRequests:
 
         mock_adapter.search_by_name.side_effect = mock_search
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            import asyncio
+        import asyncio
 
-            from httpx import AsyncClient
+        from httpx import AsyncClient
 
-            async def search(query):
-                transport = ASGITransport(app=app)
-                async with AsyncClient(
-                    transport=transport, base_url="http://test"
-                ) as ac:
-                    response = await ac.get("/api/radio/search", params={"q": query})
-                    return (query, response)
+        async def search(query):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                response = await ac.get("/api/radio/search", params={"q": query})
+                return (query, response)
 
-            # Search for "rock" and "jazz" concurrently
-            tasks = [search("rock"), search("jazz"), search("rock")]
-            results = await asyncio.gather(*tasks)
+        # Search for "rock" and "jazz" concurrently
+        tasks = [search("rock"), search("jazz"), search("rock")]
+        results = await asyncio.gather(*tasks)
 
-            # Verify each query got correct results
-            for query, response in results:
-                assert response.status_code == 200
-                data = response.json()
-                if query == "rock":
-                    assert len(data["stations"]) == 1
-                    assert data["stations"][0]["name"] == "Test Radio 1"
-                elif query == "jazz":
-                    assert len(data["stations"]) == 1
-                    assert data["stations"][0]["name"] == "Test Radio 2"
-
-        finally:
-            app.dependency_overrides.clear()
+        # Verify each query got correct results
+        for query, response in results:
+            assert response.status_code == 200
+            data = response.json()
+            if query == "rock":
+                assert len(data["stations"]) == 1
+                assert data["stations"][0]["name"] == "Test Radio 1"
+            elif query == "jazz":
+                assert len(data["stations"]) == 1
+                assert data["stations"][0]["name"] == "Test Radio 2"
 
 
 class TestRadioUncoveredExceptionPaths:
@@ -693,13 +589,9 @@ class TestRadioUncoveredExceptionPaths:
         """Generic RuntimeError in search_stations returns 500 (covers 122-123)."""
         mock_adapter.search_by_name.side_effect = RuntimeError("Unexpected DB crash")
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/search", params={"q": "test"})
-            assert response.status_code == 500
-            assert "Unexpected" in response.json()["detail"]
-        finally:
-            app.dependency_overrides.clear()
+        response = client.get("/api/radio/search", params={"q": "test"})
+        assert response.status_code == 500
+        assert "Unexpected" in response.json()["detail"]
 
     def test_station_detail_radiobrowser_error_non_not_found_returns_500(
         self, client, mock_adapter
@@ -711,13 +603,9 @@ class TestRadioUncoveredExceptionPaths:
             "API rate limit exceeded"
         )
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/station/test-uuid")
-            assert response.status_code == 500
-            assert "RadioBrowser" in response.json()["detail"]
-        finally:
-            app.dependency_overrides.clear()
+        response = client.get("/api/radio/station/test-uuid")
+        assert response.status_code == 500
+        assert "Radio" in response.json()["detail"]
 
     def test_station_detail_unexpected_exception_returns_500(
         self, client, mock_adapter
@@ -727,10 +615,6 @@ class TestRadioUncoveredExceptionPaths:
             "Unexpected runtime error"
         )
 
-        app.dependency_overrides[get_radio_provider] = lambda: mock_adapter
-        try:
-            response = client.get("/api/radio/station/test-uuid")
-            assert response.status_code == 500
-            assert "Unexpected" in response.json()["detail"]
-        finally:
-            app.dependency_overrides.clear()
+        response = client.get("/api/radio/station/test-uuid")
+        assert response.status_code == 500
+        assert "Unexpected" in response.json()["detail"]

@@ -7,6 +7,12 @@ from opencloudtouch.radio.providers.radiobrowser import (
     RadioBrowserError,
     RadioBrowserTimeoutError,
 )
+from opencloudtouch.radio.providers.tunein import (
+    TuneInConnectionError,
+    TuneInError,
+    TuneInProvider,
+    TuneInTimeoutError,
+)
 
 __all__ = [
     "RadioBrowserAdapter",
@@ -14,4 +20,8 @@ __all__ = [
     "RadioBrowserError",
     "RadioBrowserTimeoutError",
     "RadioBrowserConnectionError",
+    "TuneInProvider",
+    "TuneInError",
+    "TuneInTimeoutError",
+    "TuneInConnectionError",
 ]
