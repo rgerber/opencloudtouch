@@ -13,6 +13,14 @@ _No changes yet._
 
 ---
 
+## [1.1.1] - 2026-04-12
+
+### Fixed
+- **Config file path detection (Issue #78)** — Auto-detect config at `/opt/Bose/etc/SoundTouchSdkPrivateCfg.xml` or `/mnt/nv/OverrideSdkPrivateCfg.xml`; redirect writes to writable `/mnt/nv/` when original is on read-only filesystem
+- **Vite 8 rolldown compatibility** — Fix `manualChunks` config (function instead of object)
+
+---
+
 ## [1.1.0] - 2026-03-21
 
 ### Added
