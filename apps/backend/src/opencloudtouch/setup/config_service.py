@@ -67,12 +67,39 @@ class ConfigDiff:
 class SoundTouchConfigService:
     """Service for modifying SoundTouch device configuration."""
 
-    CONFIG_PATH = "/mnt/nv/OverrideSdkPrivateCfg.xml"
+    # Probed in order — first existing file wins
+    CONFIG_CANDIDATES = [
+        "/mnt/nv/OverrideSdkPrivateCfg.xml",
+        "/opt/Bose/etc/SoundTouchSdkPrivateCfg.xml",
+        "/mnt/nv/SoundTouchSdkPrivateCfg.xml",
+    ]
     BACKUP_DIR = "/mnt/nv"
 
     def __init__(self, ssh: SoundTouchSSHClient):
         self.ssh = ssh
+        self.config_path: str | None = None  # resolved by _detect_config_path
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    async def _detect_config_path(self) -> str:
+        """Probe known config locations and return the first existing one.
+
+        Raises RuntimeError if no config file is found on the device.
+        """
+        if self.config_path:
+            return self.config_path
+
+        for candidate in self.CONFIG_CANDIDATES:
+            result = await self.ssh.execute(
+                f"test -f {candidate} && echo 'found' || echo 'missing'"
+            )
+            if "found" in (result.output or ""):
+                self.logger.info(f"Config file detected at {candidate}")
+                self.config_path = candidate
+                return candidate
+
+        raise RuntimeError(
+            f"Config file not found. Probed: {', '.join(self.CONFIG_CANDIDATES)}"
+        )
 
     async def _remount_rw(self) -> None:
         """Remount root filesystem read-write before writing."""
@@ -130,7 +157,8 @@ class SoundTouchConfigService:
 
     async def _read_config(self) -> str:
         """Read current config file from device."""
-        result = await self.ssh.execute(f"cat {self.CONFIG_PATH}")
+        path = await self._detect_config_path()
+        result = await self.ssh.execute(f"cat {path}")
         if not result.success:
             raise RuntimeError(
                 f"Cannot read config file: {result.error or result.output}"
@@ -140,13 +168,29 @@ class SoundTouchConfigService:
     async def _write_config(self, content: str) -> None:
         """Write config file atomically via base64 piping.
 
-        Writes to /tmp first, then moves to final location to avoid
-        partial writes that could brick the device.
+        If the detected config path is on a read-only filesystem
+        (/opt/Bose/etc/), copies to /mnt/nv/ first and writes there.
         """
+        path = await self._detect_config_path()
+
+        # If path is on read-only /opt/Bose/etc/, we need to write to /mnt/nv/
+        if path.startswith("/opt/Bose/"):
+            filename = path.rsplit("/", 1)[-1]
+            writable_path = f"/mnt/nv/{filename}"
+            # Copy original to writable location first (if not already there)
+            check = await self.ssh.execute(
+                f"test -f {writable_path} && echo 'exists' || echo 'missing'"
+            )
+            if "missing" in (check.output or ""):
+                await self.ssh.execute(f"cp {path} {writable_path}")
+            self.config_path = writable_path
+            path = writable_path
+            self.logger.info(f"Read-only filesystem detected, writing to {path}")
+
         b64 = base64.b64encode(content.encode()).decode()
         write_cmd = (
             f"echo '{b64}' | base64 -d > /tmp/config.new && "
-            f"mv /tmp/config.new {self.CONFIG_PATH}"
+            f"mv /tmp/config.new {path}"
         )
         result = await self.ssh.execute(write_cmd)
         if not result.success:
@@ -163,11 +207,12 @@ class SoundTouchConfigService:
 
     async def _ensure_backup(self, backup_path: str) -> None:
         """Create a backup only if none exists yet at this path."""
+        path = await self._detect_config_path()
         check = await self.ssh.execute(
             f"test -f {backup_path} && echo 'exists' || echo 'missing'"
         )
         if "missing" in (check.output or ""):
-            result = await self.ssh.execute(f"cp {self.CONFIG_PATH} {backup_path}")
+            result = await self.ssh.execute(f"cp {path} {backup_path}")
             if not result.success:
                 self.logger.warning(f"Backup may have failed: {result.error}")
 
@@ -191,7 +236,8 @@ class SoundTouchConfigService:
                 original = await self._read_config()
 
                 # 2. Backup (idempotent — only first time)
-                backup_path = f"{self.BACKUP_DIR}/OverrideSdkPrivateCfg.xml.oct-backup"
+                config_filename = (await self._detect_config_path()).rsplit("/", 1)[-1]
+                backup_path = f"{self.BACKUP_DIR}/{config_filename}.oct-backup"
                 await self._ensure_backup(backup_path)
 
                 # 3. Modify XML tags
@@ -268,7 +314,8 @@ class SoundTouchConfigService:
 
             await self._remount_rw()
             try:
-                result = await self.ssh.execute(f"cp {backup_path} {self.CONFIG_PATH}")
+                config_path = await self._detect_config_path()
+                result = await self.ssh.execute(f"cp {backup_path} {config_path}")
                 if not result.success:
                     return RestoreResult(
                         success=False,
@@ -297,7 +344,7 @@ class SoundTouchConfigService:
 
         try:
             result = await self.ssh.execute(
-                f"ls -1t {self.BACKUP_DIR}/OverrideSdkPrivateCfg.xml.* 2>/dev/null"
+                f"ls -1t {self.BACKUP_DIR}/*SdkPrivateCfg.xml.* 2>/dev/null"
             )
             if not result.success or not result.output:
                 return []

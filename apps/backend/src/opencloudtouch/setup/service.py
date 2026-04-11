@@ -263,6 +263,7 @@ class SetupService:
     ) -> None:
         """Verify that the BMX URL was written correctly (best-effort log only)."""
         result = await client.execute(
+            "cat /mnt/nv/OverrideSdkPrivateCfg.xml 2>/dev/null || "
             "cat /mnt/nv/SoundTouchSdkPrivateCfg.xml 2>/dev/null || "
             "cat /opt/Bose/etc/SoundTouchSdkPrivateCfg.xml | grep -i bmxRegistryUrl"
         )

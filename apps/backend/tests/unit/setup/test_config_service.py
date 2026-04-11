@@ -67,7 +67,10 @@ def mock_ssh():
 
 @pytest.fixture
 def service(mock_ssh):
-    return SoundTouchConfigService(mock_ssh)
+    svc = SoundTouchConfigService(mock_ssh)
+    # Pre-set config path to avoid extra SSH probe in every test
+    svc.config_path = "/mnt/nv/OverrideSdkPrivateCfg.xml"
+    return svc
 
 
 # ---------------------------------------------------------------------------
@@ -76,25 +79,79 @@ def service(mock_ssh):
 
 
 class TestConfigPath:
-    """BUG-03 regression tests."""
+    """Config path auto-detection tests (replaces BUG-03 regression)."""
 
-    def test_config_path_starts_with_mnt_nv(self):
-        assert SoundTouchConfigService.CONFIG_PATH.startswith("/mnt/nv/")
+    @pytest.fixture
+    def fresh_service(self, mock_ssh):
+        """Service without pre-set config_path for detection tests."""
+        return SoundTouchConfigService(mock_ssh)
 
-    def test_config_path_is_not_bare_nv(self):
-        assert not SoundTouchConfigService.CONFIG_PATH.startswith("/nv/")
-
-    def test_config_path_correct_filename(self):
-        assert SoundTouchConfigService.CONFIG_PATH.endswith("OverrideSdkPrivateCfg.xml")
-
-    def test_config_path_exact_value(self):
+    def test_first_candidate_is_mnt_nv_override(self):
         assert (
-            SoundTouchConfigService.CONFIG_PATH == "/mnt/nv/OverrideSdkPrivateCfg.xml"
+            SoundTouchConfigService.CONFIG_CANDIDATES[0]
+            == "/mnt/nv/OverrideSdkPrivateCfg.xml"
+        )
+
+    def test_second_candidate_is_opt_bose(self):
+        assert (
+            SoundTouchConfigService.CONFIG_CANDIDATES[1]
+            == "/opt/Bose/etc/SoundTouchSdkPrivateCfg.xml"
+        )
+
+    def test_third_candidate_is_mnt_nv_soundtouch(self):
+        assert (
+            SoundTouchConfigService.CONFIG_CANDIDATES[2]
+            == "/mnt/nv/SoundTouchSdkPrivateCfg.xml"
         )
 
     def test_backup_dir_is_on_persistent_volume(self):
         """Backups must be on persistent volume so they survive reboots."""
         assert SoundTouchConfigService.BACKUP_DIR == "/mnt/nv"
+
+    @pytest.mark.asyncio
+    async def test_detect_first_candidate(self, fresh_service, mock_ssh):
+        """Detects /mnt/nv/OverrideSdkPrivateCfg.xml when it exists."""
+        mock_ssh.execute.return_value = _ok("found")
+        path = await fresh_service._detect_config_path()
+        assert path == "/mnt/nv/OverrideSdkPrivateCfg.xml"
+
+    @pytest.mark.asyncio
+    async def test_detect_fallback_to_opt_bose(self, fresh_service, mock_ssh):
+        """Falls back to /opt/Bose/etc/ when /mnt/nv/ doesn't have the file."""
+        mock_ssh.execute.side_effect = [
+            _ok("missing"),  # /mnt/nv/OverrideSdkPrivateCfg.xml
+            _ok("found"),  # /opt/Bose/etc/SoundTouchSdkPrivateCfg.xml
+        ]
+        path = await fresh_service._detect_config_path()
+        assert path == "/opt/Bose/etc/SoundTouchSdkPrivateCfg.xml"
+
+    @pytest.mark.asyncio
+    async def test_detect_fallback_to_mnt_nv_soundtouch(self, fresh_service, mock_ssh):
+        """Falls back to /mnt/nv/SoundTouchSdkPrivateCfg.xml as last resort."""
+        mock_ssh.execute.side_effect = [
+            _ok("missing"),
+            _ok("missing"),
+            _ok("found"),
+        ]
+        path = await fresh_service._detect_config_path()
+        assert path == "/mnt/nv/SoundTouchSdkPrivateCfg.xml"
+
+    @pytest.mark.asyncio
+    async def test_detect_raises_when_none_found(self, fresh_service, mock_ssh):
+        """Raises RuntimeError when no config file exists."""
+        mock_ssh.execute.return_value = _ok("missing")
+        with pytest.raises(RuntimeError, match="Config file not found"):
+            await fresh_service._detect_config_path()
+
+    @pytest.mark.asyncio
+    async def test_detect_caches_result(self, fresh_service, mock_ssh):
+        """Second call returns cached path without SSH call."""
+        mock_ssh.execute.return_value = _ok("found")
+        await fresh_service._detect_config_path()
+        mock_ssh.execute.reset_mock()
+        path = await fresh_service._detect_config_path()
+        assert path == "/mnt/nv/OverrideSdkPrivateCfg.xml"
+        mock_ssh.execute.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
