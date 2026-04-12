@@ -186,16 +186,6 @@ export default function RadioPresets({ devices = [] }: RadioPresetsProps) {
             <div className="device-info">
               <h2 className="device-name" data-test="device-name">
                 {currentDevice?.name || "Unknown Device"}
-                {deviceOffline && (
-                  <span
-                    className="device-offline-icon"
-                    title="Gerät offline"
-                    aria-label="Gerät offline"
-                  >
-                    {" "}
-                    📡✖
-                  </span>
-                )}
               </h2>
               <span className="device-model" data-test="device-model">
                 {currentDevice?.model || "Unknown Model"}

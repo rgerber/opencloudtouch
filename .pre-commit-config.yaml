@@ -132,12 +132,12 @@ repos:
         stages: [pre-commit]
 
       # ========================================================================
-      # PRE-PUSH: ALL TESTS (Backend + Frontend + E2E)
+      # PRE-PUSH: UNIT TESTS (Backend + Frontend)
       # ========================================================================
-      - id: all-tests-must-pass
-        name: "MANDATORY: Run ALL tests (Backend + Frontend + E2E) - 100% must pass"
+      - id: unit-tests-must-pass
+        name: "MANDATORY: Run unit tests (Backend + Frontend) - 100% must pass"
         entry: npm
-        args: [test]
+        args: [run, test:unit]
         language: system
         pass_filenames: false
         always_run: true

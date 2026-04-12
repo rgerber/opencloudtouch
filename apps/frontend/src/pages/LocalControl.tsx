@@ -123,19 +123,7 @@ export default function LocalControl({ devices = [] }: LocalControlProps) {
               </button>
             </div>
             <div className="device-header-info">
-              <h2 className="device-name">
-                {currentDevice?.name}
-                {deviceOffline && (
-                  <span
-                    className="device-offline-icon"
-                    title="Gerät offline"
-                    aria-label="Gerät offline"
-                  >
-                    {" "}
-                    📡✖
-                  </span>
-                )}
-              </h2>
+              <h2 className="device-name">{currentDevice?.name}</h2>
               <span className="device-model">{currentDevice?.model || "Unknown Model"}</span>
             </div>
             <div className="device-header-right">

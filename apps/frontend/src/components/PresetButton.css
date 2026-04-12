@@ -137,10 +137,3 @@
   color: var(--color-text-secondary);
   font-style: italic;
 }
-
-/* Offline icon next to device name */
-.device-offline-icon {
-  font-size: 0.75em;
-  vertical-align: middle;
-  opacity: 0.8;
-}
