@@ -33,6 +33,21 @@ const STATUS_CONFIG: Record<SetupStatus, { icon: string; label: string; classNam
     label: "Fehlgeschlagen",
     className: "status-failed",
   },
+  outdated: {
+    icon: "🔄",
+    label: "Veraltet",
+    className: "status-outdated",
+  },
+  offline: {
+    icon: "📡",
+    label: "Offline",
+    className: "status-offline",
+  },
+  unknown: {
+    icon: "❓",
+    label: "Unbekannt",
+    className: "status-unknown",
+  },
 };
 
 export default function StatusBadge({

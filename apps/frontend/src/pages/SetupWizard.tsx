@@ -104,7 +104,7 @@ export default function SetupWizard({ devices, isLoading = false }: SetupWizardP
     if (!selectedDevice && devices.length > 0 && devices[0]) {
       setSelectedDevice(devices[0]);
     }
-  }, [searchParams, devices]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchParams, devices]); // eslint-disable-line @eslint-react/exhaustive-deps
 
   // Always render the outer wrapper so tests/transitions can find it immediately.
   // Inner content transitions: loading → empty → main wizard.

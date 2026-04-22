@@ -30,8 +30,8 @@ describe("LoadingSkeleton", () => {
       expect(skeleton).toHaveStyle({
         width: "200px",
         height: "40px",
-        borderRadius: "8px",
       });
+      expect((skeleton as HTMLElement).style.borderRadius).toBe("8px");
 
       // Hidden from screen readers (decorative element)
       expect(skeleton).toHaveAttribute("aria-hidden", "true");

@@ -1,18 +1,9 @@
 import { useState, ReactNode } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { Device } from "../api/devices";
 import "./DeviceSwiper.css";
 
-export interface Device {
-  device_id: string;
-  name: string;
-  model?: string;
-  firmware?: string;
-  ip?: string;
-  setup_status?: "unconfigured" | "configured" | "in_progress" | "failed";
-  capabilities?: {
-    airplay?: boolean;
-  };
-}
+export type { Device };
 
 interface DeviceSwiperProps {
   devices: Device[];

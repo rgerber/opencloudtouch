@@ -22,14 +22,18 @@ export default function Toast({ message, type = "info", duration = 5000, onClose
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
+    let fadeTimer: ReturnType<typeof setTimeout>;
     const timer = setTimeout(() => {
       setIsVisible(false);
       if (onClose) {
-        setTimeout(onClose, 300); // Wait for fade-out animation
+        fadeTimer = setTimeout(onClose, 300); // Wait for fade-out animation
       }
     }, duration);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fadeTimer);
+    };
   }, [duration, onClose]);
 
   if (!isVisible) return null;

@@ -70,7 +70,7 @@ export default function Step3PowerCycle({
     setCheckAttempts((prev) => prev + 1);
 
     try {
-      const result = await checkPorts({ device_ip: deviceIp });
+      const result = await checkPorts({ device_ip: deviceIp, timeout: 10 });
       setPortsAvailable(result.has_ssh || result.has_telnet);
 
       if (!result.has_ssh && !result.has_telnet) {
@@ -94,7 +94,7 @@ export default function Step3PowerCycle({
       return () => clearTimeout(timer);
     }
     return undefined; // Explicit return for other code paths
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [checkAttempts]);
 
   return (

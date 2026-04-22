@@ -4,6 +4,7 @@
  */
 
 import { getErrorMessage } from "./types";
+import { SetupStatus } from "./setup";
 
 // Backend API response structure (matches Device.to_dict() from repository.py)
 interface DeviceAPIResponse {
@@ -28,7 +29,7 @@ export interface Device {
   model?: string;
   firmware?: string;
   ip?: string;
-  setup_status?: string;
+  setup_status?: SetupStatus;
   ssh_permanent?: boolean;
   setup_completed_at?: string | null;
   capabilities?: {
@@ -54,7 +55,7 @@ function mapDeviceFromAPI(apiDevice: DeviceAPIResponse): Device {
     model: apiDevice.model, // Backend already returns 'model'
     ip: apiDevice.ip, // Backend already returns 'ip'
     firmware: apiDevice.firmware_version,
-    setup_status: apiDevice.setup_status,
+    setup_status: apiDevice.setup_status as SetupStatus,
     ssh_permanent: apiDevice.ssh_permanent,
     setup_completed_at: apiDevice.setup_completed_at,
   };

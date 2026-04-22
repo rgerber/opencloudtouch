@@ -182,7 +182,7 @@ export default function MultiRoom({ devices = [] }: Readonly<MultiRoomProps>) {
     } finally {
       setOperationLoading(false);
     }
-  }, [selectedDevices, editingZone, createZone, addMembers, removeMembers]);
+  }, [selectedDevices, editingZone, showToast, createZone, addMembers, removeMembers]);
 
   const handleDissolveZone = useCallback(
     async (masterId: string) => {
@@ -198,7 +198,7 @@ export default function MultiRoom({ devices = [] }: Readonly<MultiRoomProps>) {
         setOperationLoading(false);
       }
     },
-    [dissolveZone, removeZoneName]
+    [dissolveZone, removeZoneName, showToast]
   );
 
   const handleEditZone = (zone: ZoneInfo) => {

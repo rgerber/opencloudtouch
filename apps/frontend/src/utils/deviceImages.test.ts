@@ -60,7 +60,7 @@ describe("deviceImages utilities", () => {
   describe("preloadDeviceImages", () => {
     beforeEach(() => {
       // Mock the Image constructor
-      global.Image = class {
+      (globalThis as Record<string, unknown>).Image = class {
         public src = "";
         constructor() {
           // Simulate image loading
@@ -72,7 +72,7 @@ describe("deviceImages utilities", () => {
       const imageSrcList: string[] = [];
 
       // Override Image to track src assignments
-      global.Image = class {
+      (globalThis as Record<string, unknown>).Image = class {
         private _src = "";
 
         get src() {

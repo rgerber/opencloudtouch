@@ -32,15 +32,15 @@ export function useVolume(deviceId: string | undefined): UseVolumeResult {
   const [muted, setMuted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deviceOffline, setDeviceOffline] = useState(false);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const pendingVolume = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const pendingVolumeRef = useRef(false);
   const offlineRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   // Fetch volume from device
   const fetchVolume = useCallback(
     async (force = false) => {
-      if (!deviceId || pendingVolume.current || (!force && offlineRef.current)) return;
+      if (!deviceId || pendingVolumeRef.current || (!force && offlineRef.current)) return;
       // Session-level offline check
       if (isDeviceOffline(deviceId)) {
         if (!offlineRef.current) {
@@ -114,10 +114,10 @@ export function useVolume(deviceId: string | undefined): UseVolumeResult {
     (level: number) => {
       if (!deviceId) return;
       setVolume(level); // Optimistic update
-      pendingVolume.current = true;
+      pendingVolumeRef.current = true;
 
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-      debounceTimer.current = setTimeout(async () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(async () => {
         try {
           const vol = await setVolumeApi(deviceId, level);
           setVolume(vol.actual);
@@ -132,7 +132,7 @@ export function useVolume(deviceId: string | undefined): UseVolumeResult {
         } catch (err) {
           console.error("[useVolume] Failed to set volume:", err);
         } finally {
-          pendingVolume.current = false;
+          pendingVolumeRef.current = false;
         }
       }, DEBOUNCE_MS);
     },

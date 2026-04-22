@@ -31,15 +31,15 @@ export default function VolumeSlider({
   const fillRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
-  const lastClientX = useRef<number>(0);
-  const isDragging = useRef(false);
+  const lastClientXRef = useRef<number>(0);
+  const isDraggingRef = useRef(false);
   const onVolumeChangeRef = useRef(onVolumeChange);
   onVolumeChangeRef.current = onVolumeChange;
 
   // Sync prop → DOM only when NOT dragging.
   // During drag, refs control the visual position exclusively.
   useEffect(() => {
-    if (isDragging.current) return;
+    if (isDraggingRef.current) return;
     const pct = `${volume}%`;
     if (fillRef.current) {
       fillRef.current.style.width = pct;
@@ -63,29 +63,29 @@ export default function VolumeSlider({
     if (rafRef.current !== null) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
-      if (!isDragging.current) return;
-      applyValueDOM(calcValue(lastClientX.current));
+      if (!isDraggingRef.current) return;
+      applyValueDOM(calcValue(lastClientXRef.current));
       scheduleFrame();
     });
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.stopPropagation(); // prevent card swipe (Framer Motion drag) on mobile
-    isDragging.current = true;
+    isDraggingRef.current = true;
     e.currentTarget.setPointerCapture(e.pointerId);
-    lastClientX.current = e.clientX;
+    lastClientXRef.current = e.clientX;
     applyValueDOM(calcValue(e.clientX));
     scheduleFrame();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging.current) return;
-    lastClientX.current = e.clientX;
+    if (!isDraggingRef.current) return;
+    lastClientXRef.current = e.clientX;
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;

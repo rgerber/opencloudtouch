@@ -112,8 +112,8 @@ export default function Licenses() {
           <div>Lizenz</div>
           <div>Link</div>
         </div>
-        {items.map((dep, idx) => (
-          <div key={idx} className="license-row">
+        {items.map((dep) => (
+          <div key={dep.name} className="license-row">
             <div className="lib-name">{dep.name}</div>
             <div className="lib-version">{dep.version}</div>
             <div className="lib-license">

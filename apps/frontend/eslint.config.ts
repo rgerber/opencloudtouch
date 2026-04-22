@@ -1,8 +1,7 @@
 import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
-import pluginReact from "eslint-plugin-react";
-import pluginReactHooks from "eslint-plugin-react-hooks";
+import eslintReact from "@eslint-react/eslint-plugin";
 
 export default [
   {
@@ -22,15 +21,6 @@ export default [
   },
   {
     files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
-    plugins: {
-      react: pluginReact,
-      "react-hooks": pluginReactHooks
-    },
-    settings: {
-      react: {
-        version: "detect"
-      }
-    },
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -45,16 +35,14 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      ...pluginReact.configs.recommended.rules,
-      // React 18+ doesn't require React import in JSX files
-      "react/react-in-jsx-scope": "off",
-      // TypeScript migration complete - prop-types no longer needed
-      "react/prop-types": "off",
-      // Temporary: Disable display-name until eslint-plugin-react v8
-      "react/display-name": "off",
-      // React Hooks rules
-      "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn"
+    }
+  },
+  // ESLint React recommended rules (replaces eslint-plugin-react + react-hooks)
+  eslintReact.configs["recommended-typescript"],
+  // Disable set-state-in-effect: setState in useEffect is standard React for data fetching/reset
+  {
+    rules: {
+      "@eslint-react/set-state-in-effect": "off",
     }
   },
   // Test files configuration

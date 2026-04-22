@@ -188,7 +188,7 @@ export default function Step6HostsModification({
             <div className="hosts-details">
               <div className="hosts-detail-item">
                 <strong>Geänderte Einträge:</strong>
-                <span className="hosts-detail-value">{modifyData.added_entries}</span>
+                <span className="hosts-detail-value">{modifyData.diff || "—"}</span>
               </div>
               {modifyData.backup_path && (
                 <div className="hosts-detail-item">

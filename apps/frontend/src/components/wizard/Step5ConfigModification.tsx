@@ -95,7 +95,7 @@ export default function Step5ConfigModification({
       }
     };
     init();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line @eslint-react/exhaustive-deps
 
   const handleInputChange = (value: string) => {
     setCustomUrl(value);

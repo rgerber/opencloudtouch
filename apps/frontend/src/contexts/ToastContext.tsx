@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, use, useState, useCallback, ReactNode } from "react";
 import Toast from "../components/Toast";
 
 /**
@@ -45,17 +45,17 @@ export function ToastProvider({ children }: ToastProviderProps) {
   }, []);
 
   return (
-    <ToastContext.Provider value={{ show, hide }}>
+    <ToastContext value={{ show, hide }}>
       {children}
       {toast && (
         <Toast message={toast.message} type={toast.type} duration={toast.duration} onClose={hide} />
       )}
-    </ToastContext.Provider>
+    </ToastContext>
   );
 }
 
 export function useToast(): ToastContextValue {
-  const context = useContext(ToastContext);
+  const context = use(ToastContext);
   if (!context) {
     throw new Error("useToast must be used within ToastProvider");
   }

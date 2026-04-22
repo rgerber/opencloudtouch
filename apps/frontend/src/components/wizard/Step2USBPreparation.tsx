@@ -1,7 +1,7 @@
 /**
  * Step 2: USB Preparation
  */
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import WizardStep from "./WizardStep";
 import "./Step2USBPreparation.css";
 
@@ -13,25 +13,18 @@ interface Step2Props {
 
 type Platform = "windows" | "macos" | "linux" | "unknown";
 
+function detectPlatform(): Platform {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const plat = navigator.platform?.toLowerCase();
+  if (plat?.includes("win") || userAgent.includes("windows")) return "windows";
+  if (plat?.includes("mac") || userAgent.includes("mac")) return "macos";
+  if (plat?.includes("linux") || userAgent.includes("linux")) return "linux";
+  return "unknown";
+}
+
 export default function Step2USBPreparation({ deviceModel, onNext, onPrevious }: Step2Props) {
-  const [platform, setPlatform] = useState<Platform>("unknown");
+  const [platform, setPlatform] = useState<Platform>(detectPlatform);
   const [usbReady, setUsbReady] = useState(false);
-
-  useEffect(() => {
-    // Detect platform
-    const userAgent = navigator.userAgent.toLowerCase();
-    const plat = navigator.platform?.toLowerCase();
-
-    if (plat?.includes("win") || userAgent.includes("windows")) {
-      setPlatform("windows");
-    } else if (plat?.includes("mac") || userAgent.includes("mac")) {
-      setPlatform("macos");
-    } else if (plat?.includes("linux") || userAgent.includes("linux")) {
-      setPlatform("linux");
-    } else {
-      setPlatform("unknown");
-    }
-  }, []);
 
   const usbPort = deviceModel.includes("30") || deviceModel.includes("300") ? "USB-A" : "Micro-USB";
 
@@ -128,8 +121,8 @@ export default function Step2USBPreparation({ deviceModel, onNext, onPrevious }:
             </select>
           </div>
           <ol className="usb-instruction-list">
-            {formatInstructions.steps.map((step, index) => (
-              <li key={index} className="usb-instruction-item">
+            {formatInstructions.steps.map((step) => (
+              <li key={step} className="usb-instruction-item">
                 {step}
               </li>
             ))}

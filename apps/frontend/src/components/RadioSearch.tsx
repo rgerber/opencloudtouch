@@ -70,8 +70,10 @@ const SEARCH_PLACEHOLDERS: Record<SearchType, string> = {
  */
 function getStationInitials(name: string): string {
   const words = name.trim().split(/\s+/);
-  if (words.length >= 2) {
-    return (words[0][0] + words[1][0]).toUpperCase();
+  const first = words[0];
+  const second = words[1];
+  if (words.length >= 2 && first && second) {
+    return ((first[0] ?? "") + (second[0] ?? "")).toUpperCase();
   }
   return name.trim().substring(0, Math.min(2, name.trim().length)).toUpperCase();
 }
@@ -98,7 +100,7 @@ function getAvatarColor(name: string): string {
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return colors[Math.abs(hash) % colors.length];
+  return colors[Math.abs(hash) % colors.length] ?? "#6264A7";
 }
 
 export default function RadioSearch({

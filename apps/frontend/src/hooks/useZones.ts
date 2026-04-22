@@ -32,10 +32,10 @@ export function useZones(): UseZonesResult {
   const [zones, setZones] = useState<ZoneInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const isMutating = useRef(false);
+  const isMutatingRef = useRef(false);
 
   const fetchZones = useCallback(async () => {
-    if (isMutating.current) {
+    if (isMutatingRef.current) {
       console.debug("[useZones] Skipping poll (mutation in progress)");
       return;
     }
@@ -65,7 +65,7 @@ export function useZones(): UseZonesResult {
 
   const createZone = useCallback(
     async (masterId: string, slaveIds: string[]): Promise<ZoneInfo> => {
-      isMutating.current = true;
+      isMutatingRef.current = true;
       console.info("[useZones] Creating zone: master=%s, slaves=%s", masterId, slaveIds);
       try {
         const result = await createZoneApi(masterId, slaveIds);
@@ -78,14 +78,14 @@ export function useZones(): UseZonesResult {
         setError(err instanceof Error ? err.message : "Failed to create zone");
         throw err;
       } finally {
-        isMutating.current = false;
+        isMutatingRef.current = false;
       }
     },
     [fetchZones]
   );
 
   const dissolveZone = useCallback(async (masterId: string): Promise<void> => {
-    isMutating.current = true;
+    isMutatingRef.current = true;
     try {
       await dissolveZoneApi(masterId);
       console.info("[useZones] Zone dissolved: %s (suppressing polls for 15s)", masterId);
@@ -93,11 +93,11 @@ export function useZones(): UseZonesResult {
       // Keep isMutating true for 15s so polling doesn't re-fetch the zone
       // before the SoundTouch device has fully dissolved it.
       setTimeout(() => {
-        isMutating.current = false;
+        isMutatingRef.current = false;
         console.debug("[useZones] Polling re-enabled after dissolve cooldown");
       }, 15_000);
     } catch (err) {
-      isMutating.current = false;
+      isMutatingRef.current = false;
       setError(err instanceof Error ? err.message : "Failed to dissolve zone");
       throw err;
     }
@@ -105,7 +105,7 @@ export function useZones(): UseZonesResult {
 
   const addMembers = useCallback(
     async (masterId: string, deviceIds: string[]): Promise<ZoneInfo> => {
-      isMutating.current = true;
+      isMutatingRef.current = true;
       try {
         const result = await addMembersApi(masterId, deviceIds);
         await fetchZones();
@@ -114,7 +114,7 @@ export function useZones(): UseZonesResult {
         setError(err instanceof Error ? err.message : "Failed to add members");
         throw err;
       } finally {
-        isMutating.current = false;
+        isMutatingRef.current = false;
       }
     },
     [fetchZones]
@@ -122,7 +122,7 @@ export function useZones(): UseZonesResult {
 
   const removeMembers = useCallback(
     async (masterId: string, deviceIds: string[]): Promise<void> => {
-      isMutating.current = true;
+      isMutatingRef.current = true;
       try {
         await removeMembersApi(masterId, deviceIds);
         await fetchZones();
@@ -130,7 +130,7 @@ export function useZones(): UseZonesResult {
         setError(err instanceof Error ? err.message : "Failed to remove members");
         throw err;
       } finally {
-        isMutating.current = false;
+        isMutatingRef.current = false;
       }
     },
     [fetchZones]
@@ -138,7 +138,7 @@ export function useZones(): UseZonesResult {
 
   const changeMasterFn = useCallback(
     async (oldMasterId: string, newMasterId: string): Promise<ZoneInfo> => {
-      isMutating.current = true;
+      isMutatingRef.current = true;
       try {
         const result = await changeMasterApi(oldMasterId, newMasterId);
         await fetchZones();
@@ -147,7 +147,7 @@ export function useZones(): UseZonesResult {
         setError(err instanceof Error ? err.message : "Failed to change master");
         throw err;
       } finally {
-        isMutating.current = false;
+        isMutatingRef.current = false;
       }
     },
     [fetchZones]

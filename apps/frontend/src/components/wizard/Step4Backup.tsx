@@ -131,18 +131,20 @@ export default function Step4Backup({
 
             <div className="backup-files">
               <h4 className="backup-files-title">Gespeicherte Dateien (auf USB-Stick):</h4>
-              {backupData.volumes.map((vol: BackupVolume) => (
-                <div key={vol.volume} className="backup-file-item">
-                  <span className="backup-file-icon">📁</span>
-                  <div className="backup-file-details">
-                    <strong>{vol.volume}</strong>
-                    <small>
-                      {vol.size_mb.toFixed(2)} MB &middot; {vol.duration_seconds.toFixed(1)}s
-                    </small>
+              {(backupData.volumes as unknown as BackupVolume[] | undefined)?.map(
+                (vol: BackupVolume) => (
+                  <div key={vol.volume} className="backup-file-item">
+                    <span className="backup-file-icon">📁</span>
+                    <div className="backup-file-details">
+                      <strong>{vol.volume}</strong>
+                      <small>
+                        {vol.size_mb.toFixed(2)} MB &middot; {vol.duration_seconds.toFixed(1)}s
+                      </small>
+                    </div>
+                    <code className="backup-file-path">{vol.path}</code>
                   </div>
-                  <code className="backup-file-path">{vol.path}</code>
-                </div>
-              ))}
+                )
+              )}
             </div>
 
             <div className="backup-summary">

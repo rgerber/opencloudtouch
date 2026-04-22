@@ -30,7 +30,7 @@ export default function ManualIPModal({ isOpen, onClose }: ManualIPModalProps) {
       setValidationError(null);
       setSuccess(false);
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen]); // eslint-disable-line @eslint-react/exhaustive-deps
 
   // REFACT-135: Real-time validation as user types
   const handleIpListChange = (value: string) => {

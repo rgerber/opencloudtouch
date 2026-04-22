@@ -90,6 +90,7 @@ export function SkeletonList({ count, SkeletonComponent }: SkeletonListProps) {
   return (
     <>
       {Array.from({ length: count }).map((_, index) => (
+        // eslint-disable-next-line @eslint-react/no-array-index-key -- no stable key for generated skeleton placeholders
         <SkeletonComponent key={index} />
       ))}
     </>
