@@ -1,0 +1,162 @@
+name: "\U0001F41B Bug Report"
+description: "Report a bug or unexpected behaviour in OpenCloudTouch."
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please fill out the sections below so we can reproduce and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: |
+        A clear and concise description of the bug.
+        - What did you expect to happen?
+        - What actually happened instead?
+      placeholder: |
+        Example: "I searched for radio stations in Luxembourg, but the list only
+        showed stations starting with 'A'. I expected to see popular stations
+        like RTL Radio Lëtzebuerg."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: |
+        Exact steps to reproduce the behaviour. Be as specific as possible.
+      placeholder: |
+        1. Open the app in the browser
+        2. Navigate to "Radio" → "Search"
+        3. Select country "Luxembourg"
+        4. Observe the results list
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behaviour
+      description: "What should happen instead?"
+      placeholder: "The search results should include popular stations like RTL Radio Lëtzebuerg."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      description: "Which part of OpenCloudTouch is affected?"
+      options:
+        - Radio Search
+        - Presets
+        - Device Control
+        - Zones / Multi-Room
+        - Setup / Configuration
+        - UI / Design
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: OpenCloudTouch Version
+      description: "Which version are you running? (visible in Settings → About)"
+      placeholder: "e.g. v1.1.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment Type
+      description: "How is OpenCloudTouch installed?"
+      options:
+        - Raspberry Pi (official image)
+        - Docker / Podman (self-hosted)
+        - Local development
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & Device
+      description: "Which browser and device are you using?"
+      placeholder: "e.g. Chrome 125 on Windows 11, Safari on iPhone 15"
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: "If applicable, add screenshots or screen recordings to help explain the problem."
+      placeholder: "Drag & drop images here or paste from clipboard."
+    validations:
+      required: false
+
+  - type: textarea
+    id: backend-logs
+    attributes:
+      label: Backend Logs
+      description: |
+        Backend logs help us diagnose server-side issues. Here's how to get them:
+
+        **Raspberry Pi (official image):**
+        ```bash
+        ssh pi@opencloudtouch.local
+        docker logs opencloudtouch --tail 100
+        ```
+
+        **Docker / Podman (self-hosted):**
+        ```bash
+        docker logs opencloudtouch --tail 100
+        # or
+        podman logs opencloudtouch-local --tail 100
+        ```
+
+        **Tip:** For more detail, set `OCT_LOG_LEVEL=DEBUG` in your `docker-compose.yml` environment, restart the container, reproduce the bug, then grab the logs.
+      placeholder: "Paste the relevant log output here."
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: frontend-logs
+    attributes:
+      label: Frontend Logs (Browser Console)
+      description: |
+        Frontend logs help us diagnose UI issues. Here's how to get them:
+
+        1. Open the app in your browser
+        2. Press **F12** (or right-click → "Inspect") to open Developer Tools
+        3. Go to the **Console** tab
+        4. Reproduce the bug
+        5. Copy any red error messages or warnings
+
+        **Tip:** In the **Network** tab, you can also check for failed API requests (shown in red). Right-click → "Copy as cURL" is very helpful for us.
+      placeholder: "Paste the relevant console output here."
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: |
+        Anything else that might help:
+        - Does it happen every time or only sometimes?
+        - Did it work before? If so, since which version does it fail?
+        - Number of SoundTouch devices, network setup, etc.
+      placeholder: "Any other details."
+    validations:
+      required: false
