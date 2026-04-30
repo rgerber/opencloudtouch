@@ -704,3 +704,64 @@ class TestWizardComplete:
             json={"device_id": "ABC123"},
         )
         assert response.status_code == 500
+
+
+# ── _check_port_443 (direct unit test) ────────────────────────────────────────
+
+
+class TestCheckPort443:
+    """Direct tests for _check_port_443 SSL probe function.
+
+    The SSL context intentionally disables certificate verification because
+    this function only probes whether port 443 is open, without sending
+    sensitive data. These tests verify both the positive and negative paths.
+    """
+
+    def test_returns_true_when_ssl_handshake_succeeds(self):
+        from opencloudtouch.setup.wizard_routes import _check_port_443
+
+        with (
+            patch(
+                "opencloudtouch.setup.wizard_routes.socket.create_connection"
+            ) as mock_conn,
+            patch("opencloudtouch.setup.wizard_routes.ssl.SSLContext") as mock_ctx_cls,
+        ):
+            mock_sock = MagicMock()
+            mock_conn.return_value.__enter__ = MagicMock(return_value=mock_sock)
+            mock_conn.return_value.__exit__ = MagicMock(return_value=False)
+
+            mock_ctx = MagicMock()
+            mock_ctx_cls.return_value = mock_ctx
+            mock_wrapped = MagicMock()
+            mock_ctx.wrap_socket.return_value.__enter__ = MagicMock(
+                return_value=mock_wrapped
+            )
+            mock_ctx.wrap_socket.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = _check_port_443("192.168.1.50")
+
+        assert result is True
+        # Verify SSL context was configured for detection-only (no verification)
+        assert mock_ctx.check_hostname is False
+
+    def test_returns_false_when_connection_refused(self):
+        from opencloudtouch.setup.wizard_routes import _check_port_443
+
+        with patch(
+            "opencloudtouch.setup.wizard_routes.socket.create_connection",
+            side_effect=ConnectionRefusedError("Connection refused"),
+        ):
+            result = _check_port_443("192.168.1.50")
+
+        assert result is False
+
+    def test_returns_false_on_timeout(self):
+        from opencloudtouch.setup.wizard_routes import _check_port_443
+
+        with patch(
+            "opencloudtouch.setup.wizard_routes.socket.create_connection",
+            side_effect=TimeoutError("Connection timed out"),
+        ):
+            result = _check_port_443("10.0.0.1")
+
+        assert result is False

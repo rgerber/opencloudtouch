@@ -11,7 +11,7 @@
  * - Accessibility (aria-labels)
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import VolumeSlider from "../../src/components/VolumeSlider";
 
@@ -150,6 +150,89 @@ describe("VolumeSlider Component", () => {
         <VolumeSlider volume={50} onVolumeChange={vi.fn()} muted={false} onMuteToggle={vi.fn()} />
       );
       expect(screen.getByRole("slider")).toHaveAttribute("tabindex", "0");
+    });
+  });
+
+  describe("Pointer Drag Interactions", () => {
+    // jsdom does not implement setPointerCapture / releasePointerCapture
+    beforeEach(() => {
+      HTMLElement.prototype.setPointerCapture = vi.fn();
+      HTMLElement.prototype.releasePointerCapture = vi.fn();
+    });
+    it("should call onVolumeChange after pointerdown + pointerup", () => {
+      const mockOnVolumeChange = vi.fn();
+      const { container } = render(
+        <VolumeSlider volume={50} onVolumeChange={mockOnVolumeChange} muted={false} onMuteToggle={vi.fn()} />,
+      );
+      const track = container.querySelector(".volume-track") as HTMLElement;
+      // Mock getBoundingClientRect for value calculation
+      vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
+        left: 0, right: 200, width: 200, top: 0, bottom: 20, height: 20, x: 0, y: 0, toJSON: vi.fn(),
+      });
+
+      // Simulate drag: pointerdown at 50% → pointerup at same position
+      fireEvent.pointerDown(track, { clientX: 100, pointerId: 1 });
+      fireEvent.pointerUp(track, { clientX: 100, pointerId: 1 });
+
+      expect(mockOnVolumeChange).toHaveBeenCalledWith(50);
+    });
+
+    it("should update final value based on pointerup position", () => {
+      const mockOnVolumeChange = vi.fn();
+      const { container } = render(
+        <VolumeSlider volume={0} onVolumeChange={mockOnVolumeChange} muted={false} onMuteToggle={vi.fn()} />,
+      );
+      const track = container.querySelector(".volume-track") as HTMLElement;
+      vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
+        left: 0, right: 200, width: 200, top: 0, bottom: 20, height: 20, x: 0, y: 0, toJSON: vi.fn(),
+      });
+
+      fireEvent.pointerDown(track, { clientX: 10, pointerId: 1 });
+      fireEvent.pointerMove(track, { clientX: 150, pointerId: 1 });
+      fireEvent.pointerUp(track, { clientX: 150, pointerId: 1 });
+
+      expect(mockOnVolumeChange).toHaveBeenCalledWith(75);
+    });
+
+    it("should not call onVolumeChange on pointerMove without pointerDown", () => {
+      const mockOnVolumeChange = vi.fn();
+      const { container } = render(
+        <VolumeSlider volume={50} onVolumeChange={mockOnVolumeChange} muted={false} onMuteToggle={vi.fn()} />,
+      );
+      const track = container.querySelector(".volume-track") as HTMLElement;
+
+      fireEvent.pointerMove(track, { clientX: 100, pointerId: 1 });
+
+      expect(mockOnVolumeChange).not.toHaveBeenCalled();
+    });
+
+    it("should ignore pointerUp without prior pointerDown", () => {
+      const mockOnVolumeChange = vi.fn();
+      const { container } = render(
+        <VolumeSlider volume={50} onVolumeChange={mockOnVolumeChange} muted={false} onMuteToggle={vi.fn()} />,
+      );
+      const track = container.querySelector(".volume-track") as HTMLElement;
+
+      fireEvent.pointerUp(track, { clientX: 100, pointerId: 1 });
+
+      expect(mockOnVolumeChange).not.toHaveBeenCalled();
+    });
+
+    it("should clamp drag value to 0-100 range", () => {
+      const mockOnVolumeChange = vi.fn();
+      const { container } = render(
+        <VolumeSlider volume={50} onVolumeChange={mockOnVolumeChange} muted={false} onMuteToggle={vi.fn()} />,
+      );
+      const track = container.querySelector(".volume-track") as HTMLElement;
+      vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
+        left: 100, right: 300, width: 200, top: 0, bottom: 20, height: 20, x: 100, y: 0, toJSON: vi.fn(),
+      });
+
+      // Drag past right edge
+      fireEvent.pointerDown(track, { clientX: 400, pointerId: 1 });
+      fireEvent.pointerUp(track, { clientX: 400, pointerId: 1 });
+
+      expect(mockOnVolumeChange).toHaveBeenCalledWith(100);
     });
   });
 });

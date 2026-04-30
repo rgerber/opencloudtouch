@@ -85,6 +85,21 @@ describe("ConfirmDialog", () => {
       fireEvent.keyDown(document, { key: "Escape" });
       expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
     });
+
+    it("calls onCancel when Escape is pressed on overlay element", () => {
+      render(<ConfirmDialog {...defaultProps} />);
+      const overlay = screen.getByTestId("confirm-dialog-overlay");
+      fireEvent.keyDown(overlay, { key: "Escape" });
+      // Both inline onKeyDown and document keydown listener fire
+      expect(defaultProps.onCancel).toHaveBeenCalled();
+    });
+
+    it("does not call onCancel on non-Escape key on overlay", () => {
+      render(<ConfirmDialog {...defaultProps} />);
+      const overlay = screen.getByTestId("confirm-dialog-overlay");
+      fireEvent.keyDown(overlay, { key: "Enter" });
+      expect(defaultProps.onCancel).not.toHaveBeenCalled();
+    });
   });
 
   describe("Accessibility", () => {

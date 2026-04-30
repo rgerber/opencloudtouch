@@ -216,6 +216,32 @@ class TestResolveTuneInStation:
             with pytest.raises(Exception, match="Network timeout"):
                 await resolve_tunein_station(station_id)
 
+    @pytest.mark.asyncio
+    async def test_resolve_station_invalid_id_format(self):
+        """Station IDs with special characters are rejected before any HTTP call."""
+        for bad_id in [
+            "s123; DROP TABLE",
+            "../etc/passwd",
+            "s<script>",
+            "id with spaces",
+        ]:
+            with pytest.raises(ValueError, match="Invalid station ID format"):
+                await resolve_tunein_station(bad_id)
+
+    @pytest.mark.asyncio
+    async def test_resolve_station_valid_id_formats_accepted(self):
+        """Alphanumeric IDs with hyphens/underscores pass validation."""
+        # These should NOT raise ValueError — they may fail on HTTP, but that's OK
+        for valid_id in ["s158432", "p12345", "station_1", "abc-def"]:
+            with patch("opencloudtouch.bmx.tunein.httpx.AsyncClient") as mock_client:
+                mock_ctx = AsyncMock()
+                mock_ctx.__aenter__.return_value.get = AsyncMock(
+                    side_effect=Exception("expected — we only test validation")
+                )
+                mock_client.return_value = mock_ctx
+                with pytest.raises(Exception, match="expected"):
+                    await resolve_tunein_station(valid_id)
+
 
 class TestBmxTuneInPlaybackEndpoint:
     """Unit tests for bmx_tunein_playback endpoint."""

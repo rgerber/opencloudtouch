@@ -349,4 +349,44 @@ describe("RadioSearch Component", () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it("calls onClose when Escape key is pressed on overlay", () => {
+    render(
+      <RadioSearch isOpen={true} onStationSelect={mockOnStationSelect} onClose={mockOnClose} />,
+    );
+
+    const overlay = document.querySelector(".radio-search-overlay")!;
+    fireEvent.keyDown(overlay, { key: "Escape" });
+
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not close on non-Escape key on overlay", () => {
+    render(
+      <RadioSearch isOpen={true} onStationSelect={mockOnStationSelect} onClose={mockOnClose} />,
+    );
+
+    const overlay = document.querySelector(".radio-search-overlay")!;
+    fireEvent.keyDown(overlay, { key: "Tab" });
+
+    expect(mockOnClose).not.toHaveBeenCalled();
+  });
+
+  it("overlay has role=presentation for a11y", () => {
+    render(
+      <RadioSearch isOpen={true} onStationSelect={mockOnStationSelect} onClose={mockOnClose} />,
+    );
+
+    const overlay = document.querySelector(".radio-search-overlay")!;
+    expect(overlay).toHaveAttribute("role", "presentation");
+  });
+
+  it("modal has role=dialog for a11y", () => {
+    render(
+      <RadioSearch isOpen={true} onStationSelect={mockOnStationSelect} onClose={mockOnClose} />,
+    );
+
+    const modal = document.querySelector(".radio-search-modal")!;
+    expect(modal).toHaveAttribute("role", "dialog");
+  });
 });
