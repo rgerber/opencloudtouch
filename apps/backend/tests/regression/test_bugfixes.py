@@ -6,6 +6,7 @@ it does not reoccur. Tests are organized by bug ID and date.
 """
 
 import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 from opencloudtouch.radio.providers.mock import MockRadioAdapter
 
@@ -153,6 +154,176 @@ class TestBugfix001MockRadioStationFieldMismatch:
         assert not hasattr(station, "station_uuid")
 
 
+class TestBugfix002ManualIpNotUsedAfterStartup:
+    """
+    BUGFIX 002: Manual IPs added via UI are not used in device sync.
+
+    Date: 2026-05-01
+    Issue: #106
+    Symptom: User adds a device IP via Settings → Manual IPs, triggers
+             discovery — device never appears. The 4th speaker is reachable
+             via curl but OCT ignores it.
+    Root Cause: DeviceSyncService is initialized once at startup with
+                manual_ips from environment config (OCT_MANUAL_DEVICE_IPS).
+                IPs added at runtime via the UI are stored in the SQLite DB
+                (settings_repo) but DeviceSyncService.manual_ips is a static
+                list that is NEVER updated from the DB.
+    Fix: DeviceSyncService accepts an optional SettingsRepository. When
+         provided, _discover_via_manual_ips() fetches the current IP list
+         from the DB at sync time instead of using the stale startup list.
+    Impact: Any user who adds manual IPs via the UI — they are silently ignored.
+    """
+
+    @pytest.fixture
+    def mock_device_repo(self):
+        repo = AsyncMock()
+        repo.upsert = AsyncMock()
+        return repo
+
+    @pytest.fixture
+    def mock_device_info(self):
+        info = MagicMock()
+        info.device_id = "DEADBEEF0004"
+        info.name = "SoundTouch 10 Bedroom"
+        info.type = "SoundTouch 10"
+        info.mac_address = "DE:AD:BE:EF:00:04"
+        info.firmware_version = "27.0.6.46330"
+        return info
+
+    @pytest.mark.asyncio
+    async def test_manual_ip_added_at_runtime_is_used_in_next_sync(
+        self, mock_device_repo, mock_device_info, monkeypatch
+    ):
+        """
+        IPs added via the UI (stored in SettingsRepository) must be picked up
+        by the NEXT sync — not just at container startup.
+
+        Regression: before the fix, DeviceSyncService.manual_ips was set once
+        at construction time and never refreshed from the DB.
+        """
+        from opencloudtouch.devices.services.sync_service import DeviceSyncService
+
+        # Simulate SettingsRepository that returns a newly-added IP
+        mock_settings_repo = AsyncMock()
+        mock_settings_repo.get_manual_ips = AsyncMock(return_value=["192.168.1.40"])
+
+        # Disable SSDP so only manual IPs are in play
+        async def no_ssdp(self):
+            return []
+
+        monkeypatch.setattr(DeviceSyncService, "_discover_via_ssdp", no_ssdp)
+
+        mock_client = AsyncMock()
+        mock_client.get_info = AsyncMock(return_value=mock_device_info)
+        monkeypatch.setattr(
+            "opencloudtouch.devices.services.sync_service.get_device_client",
+            lambda url: mock_client,
+        )
+
+        # Service constructed with empty startup list but a settings_repo
+        service = DeviceSyncService(
+            repository=mock_device_repo,
+            manual_ips=[],  # empty at startup — IP was added later via UI
+            discovery_enabled=False,
+            settings_repo=mock_settings_repo,
+        )
+
+        result = await service.sync()
+
+        # The runtime-added IP must have been discovered and synced
+        assert (
+            result.discovered == 1
+        ), "Device added via UI must be discovered in the next sync"
+        assert result.synced == 1
+        mock_settings_repo.get_manual_ips.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_startup_ips_used_when_no_settings_repo(
+        self, mock_device_repo, mock_device_info, monkeypatch
+    ):
+        """
+        Backward compat: when no settings_repo is provided (e.g. env-var only
+        setup), the static startup list is still used.
+        """
+        from opencloudtouch.devices.services.sync_service import DeviceSyncService
+
+        async def no_ssdp(self):
+            return []
+
+        monkeypatch.setattr(DeviceSyncService, "_discover_via_ssdp", no_ssdp)
+
+        mock_client = AsyncMock()
+        mock_client.get_info = AsyncMock(return_value=mock_device_info)
+        monkeypatch.setattr(
+            "opencloudtouch.devices.services.sync_service.get_device_client",
+            lambda url: mock_client,
+        )
+
+        service = DeviceSyncService(
+            repository=mock_device_repo,
+            manual_ips=["192.168.1.50"],
+            discovery_enabled=False,
+            # no settings_repo
+        )
+
+        result = await service.sync()
+
+        assert result.discovered == 1
+        assert result.synced == 1
+
+    @pytest.mark.asyncio
+    async def test_db_ips_take_precedence_over_startup_ips_when_settings_repo_present(
+        self, mock_device_repo, mock_device_info, monkeypatch
+    ):
+        """
+        When settings_repo is present, the DB list is the authoritative source —
+        it replaces (not merges with) the static startup list.
+        This avoids confusion when a user removes an IP via the UI but it still
+        lingers in the env var.
+        """
+        from opencloudtouch.devices.services.sync_service import DeviceSyncService
+
+        contacted_ips = []
+
+        async def no_ssdp(self):
+            return []
+
+        monkeypatch.setattr(DeviceSyncService, "_discover_via_ssdp", no_ssdp)
+
+        def capturing_client(base_url):
+            contacted_ips.append(base_url)
+            client = AsyncMock()
+            client.get_info = AsyncMock(return_value=mock_device_info)
+            return client
+
+        monkeypatch.setattr(
+            "opencloudtouch.devices.services.sync_service.get_device_client",
+            capturing_client,
+        )
+
+        # DB has only one IP; startup list has a different IP
+        mock_settings_repo = AsyncMock()
+        mock_settings_repo.get_manual_ips = AsyncMock(return_value=["192.168.1.60"])
+
+        service = DeviceSyncService(
+            repository=mock_device_repo,
+            manual_ips=["192.168.1.99"],  # stale env-var IP
+            discovery_enabled=False,
+            settings_repo=mock_settings_repo,
+        )
+
+        result = await service.sync()
+
+        assert result.discovered == 1
+        # Only the DB IP must have been contacted, not the stale env-var IP
+        assert any(
+            "192.168.1.60" in url for url in contacted_ips
+        ), "DB IP must be contacted"
+        assert not any(
+            "192.168.1.99" in url for url in contacted_ips
+        ), "Stale startup IP must NOT be contacted when settings_repo is present"
+
+
 class TestBugfix002ParseApiErrorMissingFunction:
     """
     BUGFIX 002: parseApiError() function missing in types.ts.
@@ -177,6 +348,81 @@ class TestBugfix002ParseApiErrorMissingFunction:
         # - Tests verify ERROR_503/504/500 error messages display correctly
         # - Tests verify parseApiError extracts ErrorDetail from responses
         assert True, "parseApiError() regression coverage exists in E2E suite"
+
+
+class TestNoDeviceCountLimit:
+    """
+    Verify there is no hard limit on the number of discoverable devices.
+
+    Historically the mock adapter shipped with exactly 3 devices, which led
+    to user reports suspecting a 3-device cap (issue #106).
+    These tests confirm that 4, 5, and 6 devices are all discovered and synced
+    without truncation, rejection, or silent drops.
+    """
+
+    def _make_device_info(self, index: int) -> MagicMock:
+        info = MagicMock()
+        info.device_id = f"DEVICE{index:06X}"
+        info.name = f"SoundTouch {index}"
+        info.type = "SoundTouch 10"
+        info.mac_address = f"AA:BB:CC:DD:EE:{index:02X}"
+        info.firmware_version = "27.0.6.46330"
+        return info
+
+    def _make_discovered(self, count: int):
+        from opencloudtouch.discovery import DiscoveredDevice
+
+        return [
+            DiscoveredDevice(ip=f"192.168.1.{100 + i}", port=8090) for i in range(count)
+        ]
+
+    async def _run_sync(self, count: int, monkeypatch) -> int:
+        from opencloudtouch.devices.services.sync_service import DeviceSyncService
+
+        devices = self._make_discovered(count)
+
+        async def mock_ssdp(self):
+            return devices
+
+        call_index = {"i": 0}
+
+        def mock_client(base_url):
+            client = AsyncMock()
+            client.get_info = AsyncMock(
+                return_value=self._make_device_info(call_index["i"])
+            )
+            call_index["i"] += 1
+            return client
+
+        monkeypatch.setattr(DeviceSyncService, "_discover_via_ssdp", mock_ssdp)
+        monkeypatch.setattr(
+            "opencloudtouch.devices.services.sync_service.get_device_client",
+            mock_client,
+        )
+
+        repo = AsyncMock()
+        repo.upsert = AsyncMock()
+        service = DeviceSyncService(repository=repo, discovery_enabled=True)
+        result = await service.sync()
+        return result.synced
+
+    @pytest.mark.asyncio
+    async def test_four_devices_all_synced(self, monkeypatch):
+        """4 devices must all be discovered and synced — no 3-device cap."""
+        synced = await self._run_sync(4, monkeypatch)
+        assert synced == 4, f"Expected 4 synced devices, got {synced}"
+
+    @pytest.mark.asyncio
+    async def test_five_devices_all_synced(self, monkeypatch):
+        """5 devices must all be discovered and synced."""
+        synced = await self._run_sync(5, monkeypatch)
+        assert synced == 5, f"Expected 5 synced devices, got {synced}"
+
+    @pytest.mark.asyncio
+    async def test_six_devices_all_synced(self, monkeypatch):
+        """6 devices must all be discovered and synced."""
+        synced = await self._run_sync(6, monkeypatch)
+        assert synced == 6, f"Expected 6 synced devices, got {synced}"
 
 
 class TestBugfix003RadioSearchImportIncomplete:

@@ -27,11 +27,11 @@ describe("LoadingSkeleton", () => {
 
       // Custom dimensions
       rerender(<Skeleton width="200px" height="40px" borderRadius="8px" />);
-      expect(skeleton).toHaveStyle({
-        width: "200px",
-        height: "40px",
-        borderRadius: "8px",
-      });
+      const skeleton2 = container.querySelector(".skeleton") as HTMLElement;
+      expect(skeleton2).toHaveStyle({ width: "200px", height: "40px" });
+      // border-radius is a CSS shorthand — getComputedStyle in jsdom does not
+      // resolve it, so we check the inline style directly.
+      expect(skeleton2.style.borderRadius).toBe("8px");
 
       // Hidden from screen readers (decorative element)
       expect(skeleton).toHaveAttribute("aria-hidden", "true");
