@@ -1,7 +1,11 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { motion } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import { useManualIPs, useAddManualIP, useDeleteManualIP } from "../hooks/useSettings";
+import { useDiscoveryStream } from "../hooks/useDiscoveryStream";
+import { useToast } from "../contexts/ToastContext";
 import { toUserMessage } from "../utils/errorMessages";
+import type { Device } from "../api/devices";
 import "./Settings.css";
 
 export default function Settings() {
@@ -13,6 +17,33 @@ export default function Settings() {
   const { data: manualIPs = [], isLoading: loading, error: queryError, refetch } = useManualIPs();
   const addIP = useAddManualIP();
   const deleteIP = useDeleteManualIP();
+
+  // Discovery
+  const { isDiscovering, devicesFound, completed, startDiscovery } = useDiscoveryStream();
+  const queryClient = useQueryClient();
+  const { show } = useToast();
+
+  // Capture device IDs that existed before this component was mounted.
+  // Used to determine how many NEW devices were found by the discovery.
+  const [preDiscoveryDeviceIds] = useState<Set<string>>(() => {
+    const existing = queryClient.getQueryData<Device[]>(["devices"]) ?? [];
+    return new Set(existing.map((d) => d.device_id));
+  });
+
+  const completedRef = useRef(false);
+
+  // Show toast when discovery completes
+  useEffect(() => {
+    if (completed && !completedRef.current) {
+      completedRef.current = true;
+      const newDeviceCount = devicesFound.filter(
+        (d) => !preDiscoveryDeviceIds.has(d.device_id)
+      ).length;
+      const message =
+        newDeviceCount === 1 ? "1 neues Gerät gefunden" : `${newDeviceCount} neue Geräte gefunden`;
+      show(message, "success");
+    }
+  }, [completed, devicesFound, preDiscoveryDeviceIds, show]);
 
   const validateIP = (ip: string): boolean => {
     const parts = ip.split(".");
@@ -158,12 +189,26 @@ export default function Settings() {
             )}
           </div>
 
+          {/* Discover Button */}
+          {manualIPs.length > 0 && (
+            <div className="discover-action">
+              <button
+                className="btn btn-primary"
+                onClick={() => void startDiscovery()}
+                disabled={isDiscovering}
+                aria-label="Geräte suchen"
+              >
+                {isDiscovering ? "Suche läuft…" : "Geräte suchen"}
+              </button>
+            </div>
+          )}
+
           {/* Info Box */}
           <div className="info-box">
             <strong>ℹ️ Hinweis:</strong>
             <p>
-              Nach dem Hinzufügen oder Entfernen von IPs wird die Geräteerkennung automatisch neu
-              gestartet. Die Geräte erscheinen dann auf der Startseite.
+              Klicken Sie auf &quot;Geräte suchen&quot;, um die Erkennung manuell zu starten.
+              Gefundene Geräte erscheinen auf der Startseite.
             </p>
           </div>
         </div>

@@ -111,6 +111,23 @@ try {
         $projectRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
         Push-Location $projectRoot
 
+        # Step 0: Build frontend and place artifacts in .out/dist/
+        Write-Step "Building frontend (npm run build)..."
+        $distOut = Join-Path $projectRoot ".out\dist"
+        if (Test-Path $distOut) {
+            Write-Host "    Removing stale frontend artifacts: $distOut" -ForegroundColor Gray
+            Remove-Item -Recurse -Force $distOut
+        }
+        Push-Location (Join-Path $projectRoot "apps\frontend")
+        npm run build
+        if ($LASTEXITCODE -ne 0) {
+            Pop-Location; Pop-Location
+            Write-ErrorMsg "Frontend build failed!"
+            exit 1
+        }
+        Pop-Location
+        Write-Success "Frontend built: $distOut"
+
         $buildCmd = "podman build -f ./deployment/Dockerfile -t $Tag"
         if ($NoCache) {
             $buildCmd += " --no-cache"

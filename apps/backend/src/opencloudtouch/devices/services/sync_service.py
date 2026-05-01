@@ -4,7 +4,7 @@ Orchestrates device discovery and database synchronization.
 """
 
 import logging
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from opencloudtouch.db import Device
 from opencloudtouch.devices.adapter import get_device_client, get_discovery_adapter
@@ -17,6 +17,9 @@ from opencloudtouch.devices.events import (
 from opencloudtouch.devices.interfaces import IDeviceRepository
 from opencloudtouch.devices.models import SyncResult
 from opencloudtouch.discovery import DiscoveredDevice
+
+if TYPE_CHECKING:
+    from opencloudtouch.settings.repository import SettingsRepository
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +41,7 @@ class DeviceSyncService:
         discovery_timeout: int = 10,
         manual_ips: Optional[List[str]] = None,
         discovery_enabled: bool = True,
+        settings_repo: Optional["SettingsRepository"] = None,
     ):
         """
         Initialize sync service.
@@ -45,13 +49,17 @@ class DeviceSyncService:
         Args:
             repository: Device repository for persistence
             discovery_timeout: SSDP discovery timeout in seconds
-            manual_ips: Optional list of manual device IPs
+            manual_ips: Optional list of manual device IPs (startup / env-var fallback)
             discovery_enabled: Whether SSDP discovery is enabled
+            settings_repo: Optional SettingsRepository. When provided, manual IPs
+                           are read from the DB at each sync so that IPs added via
+                           the UI are picked up without a container restart.
         """
         self.repository = repository
         self.discovery_timeout = discovery_timeout
         self.manual_ips = manual_ips or []
         self.discovery_enabled = discovery_enabled
+        self.settings_repo = settings_repo
 
     async def sync(self) -> SyncResult:
         """
@@ -133,8 +141,9 @@ class DeviceSyncService:
         if self.discovery_enabled:
             devices.extend(await self._discover_via_ssdp())
 
-        # Manual IPs
-        if self.manual_ips:
+        # Manual IPs — always call when settings_repo is present (DB is authoritative),
+        # otherwise only when the static startup list is non-empty.
+        if self.settings_repo is not None or self.manual_ips:
             devices.extend(await self._discover_via_manual_ips())
 
         # Deduplicate by IP (SSDP and manual can surface the same device)
@@ -178,11 +187,21 @@ class DeviceSyncService:
         """
         Discover devices via manually configured IPs.
 
+        When a SettingsRepository is available, the IP list is fetched from the
+        DB at call time so that IPs added via the UI are included without a
+        container restart. Falls back to the static startup list otherwise.
+
         Returns:
             List of discovered devices
         """
         try:
-            manual = ManualDiscovery(self.manual_ips)
+            if self.settings_repo is not None:
+                ips = await self.settings_repo.get_manual_ips()
+                logger.info(f"Manual IPs from DB: {ips}")
+            else:
+                ips = self.manual_ips
+
+            manual = ManualDiscovery(ips)
             discovered = await manual.discover()
             logger.info(f"Manual discovery found {len(discovered)} devices")
             return discovered

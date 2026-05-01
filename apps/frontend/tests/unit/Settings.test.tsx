@@ -1,13 +1,14 @@
-import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Settings from "../../src/pages/Settings";
 import { QueryWrapper } from "../utils/reactQueryTestUtils";
+import { ToastProvider } from "../../src/contexts/ToastContext";
 
 // Create typed mock for fetch
 let mockFetch: Mock;
 
 const renderWithProviders = (component: React.ReactElement) => {
-  return render(<QueryWrapper>{component}</QueryWrapper>);
+  return render(<QueryWrapper><ToastProvider>{component}</ToastProvider></QueryWrapper>);
 };
 
 describe("Settings Page", () => {
@@ -342,7 +343,7 @@ describe("Settings Page", () => {
     renderWithProviders(<Settings />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Nach dem Hinzufügen oder Entfernen/i)).toBeInTheDocument();
+      expect(screen.getByText(/Klicken Sie auf.*Geräte suchen/i)).toBeInTheDocument();
     });
   });
 

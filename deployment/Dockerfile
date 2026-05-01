@@ -36,10 +36,13 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # First: Install security-pinned transitive deps to prevent vulnerable versions
 # being pulled first by other packages
 COPY apps/backend/requirements.txt ./
+COPY apps/backend/pyproject.toml ./
+COPY apps/backend/src ./src
 RUN pip install --no-cache-dir --prefix=/install \
     jaraco-context==6.1.0 \
     wheel==0.46.2 && \
-    pip install --no-cache-dir --prefix=/install -r requirements.txt
+    pip install --no-cache-dir --prefix=/install -r requirements.txt && \
+    pip install --no-cache-dir --prefix=/install --no-deps .
 
 # Remove vulnerable vendored packages from setuptools (CVE-2026-23949, CVE-2026-24049)
 # These are bundled inside setuptools but not needed at runtime

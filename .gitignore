@@ -65,11 +65,9 @@ apps/backend/openapi.yaml
 *_TEMP.md
 CONTEXT_TEMP.md
 *.log
-
-# Specify files and directories to ignore for GitHub repositories
-specs/
 AGENTS.md
-.specify
-.github/agents
-.github/prompts
 .github/copilot-instructions.md
+.github/prompts/
+.github/agents/
+.specify/
+specs/

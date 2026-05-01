@@ -395,6 +395,9 @@ jobs:
     needs: gh-release
     if: ${{ !inputs.skip_raspi }}
 
+    permissions:
+      actions: write
+
     steps:
       - name: Trigger build-images workflow
         env:

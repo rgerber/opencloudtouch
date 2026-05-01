@@ -99,6 +99,51 @@ def test_health_endpoint():
     assert "db_path" not in data["config"]
 
 
+def test_version_comes_from_package_metadata():
+    """__version__ is read from importlib.metadata (pyproject.toml), not hardcoded."""
+    from importlib.metadata import version as pkg_version
+
+    from opencloudtouch import __version__
+
+    assert __version__ == pkg_version("opencloudtouch")
+    assert __version__ != "0.0.0"  # fallback must not be active in test env
+
+
+def test_app_version_matches_package_version():
+    """FastAPI app.version matches the installed package version."""
+    from opencloudtouch import __version__
+    from opencloudtouch.main import app
+
+    assert app.version == __version__
+
+
+def test_health_version_matches_package_version():
+    """Health endpoint returns the same version as the installed package."""
+    from opencloudtouch import __version__
+    from opencloudtouch.main import app
+
+    client = TestClient(app)
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["version"] == __version__
+
+
+def test_version_single_source_consistency():
+    """All three version surfaces (package, app, health) are identical."""
+    from importlib.metadata import version as pkg_version
+
+    from opencloudtouch import __version__
+    from opencloudtouch.main import app
+
+    client = TestClient(app)
+    health_version = client.get("/health").json()["version"]
+
+    assert __version__ == pkg_version("opencloudtouch")
+    assert app.version == __version__
+    assert health_version == __version__
+
+
 def test_cors_headers_present():
     """Test CORS headers are present in responses."""
     from opencloudtouch.main import app
