@@ -44,25 +44,7 @@ Radio providers are abstracted via adapters. RadioBrowser is the built-in search
 
 ## Quick Start
 
-### Option 1 — Docker Compose (recommended)
-
-```bash
-git clone https://github.com/scheilch/opencloudtouch.git
-cd opencloudtouch
-docker compose -f deployment/docker-compose.yml up -d --build
-```
-
-Open **http://localhost:7777** in your browser.
-
-```bash
-# View logs
-docker compose -f deployment/docker-compose.yml logs -f
-
-# Stop
-docker compose -f deployment/docker-compose.yml down
-```
-
-### Option 2 — Docker Run (GHCR)
+### Option 1 — Docker Run (recommended)
 
 ```bash
 docker run -d \
@@ -72,6 +54,38 @@ docker run -d \
   -e OCT_DISCOVERY_ENABLED=true \
   ghcr.io/scheilch/opencloudtouch:stable
 ```
+
+Open **http://localhost:7777** in your browser.
+
+### Option 2 — Docker Compose
+
+```bash
+docker run -d \
+  --name opencloudtouch \
+  --network host \
+  -v opencloudtouch-data:/data \
+  -e OCT_DISCOVERY_ENABLED=true \
+  ghcr.io/scheilch/opencloudtouch:stable
+```
+
+Or use the provided compose file (pull mode, no build required):
+
+```bash
+docker compose -f deployment/docker-compose.yml pull
+docker compose -f deployment/docker-compose.yml up -d
+```
+
+```bash
+# View logs
+docker compose -f deployment/docker-compose.yml logs -f
+
+# Stop
+docker compose -f deployment/docker-compose.yml down
+```
+
+> **Building from source?** The Dockerfile expects a pre-built frontend in `.out/dist/`.
+> Run `cd apps/frontend && npm install && npm run build` first, then
+> `docker compose -f deployment/docker-compose.yml up -d --build`.
 
 ### Option 3 — Raspberry Pi (SD Card Image)
 
