@@ -105,6 +105,8 @@ New to OpenCloudTouch? Watch this step-by-step setup tutorial:
 
 [![OpenCloudTouch Setup Tutorial](https://img.youtube.com/vi/sGB9peEGNwQ/maxresdefault.jpg)](https://www.youtube.com/watch?v=sGB9peEGNwQ)
 
+*by [Hoerli](https://www.youtube.com/@hoerli)*
+
 ## Project Structure
 
 ```text
