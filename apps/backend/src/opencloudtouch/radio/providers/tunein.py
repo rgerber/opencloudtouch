@@ -190,7 +190,7 @@ class TuneInProvider(RadioProvider):
     # Search methods
     # -------------------------------------------------------------------
 
-    async def search_by_name(self, name: str, limit: int = 20) -> List[RadioStation]:
+    async def search_by_name(self, name: str, limit: int = 50) -> List[RadioStation]:
         url = f"{TUNEIN_BASE}/Search.ashx"
         params = {"query": name}
         return await self._search(url, params, limit)
